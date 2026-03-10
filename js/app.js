@@ -21,35 +21,31 @@ let tasas = {
 let tasaPersonalizada = 0.00;
 let modo = 'USDaBs';
 let ultimaActualizacion = null;
+let editandoPersonalizada = false;
+let editandoCantidad = false;
+let timeoutId;
 
 // Elementos del DOM
 const elementos = {
-    // Cards
     tasaBCV: document.getElementById('tasaBCV'),
     tasaEuro: document.getElementById('tasaEuro'),
     tasaUSDT: document.getElementById('tasaUSDT'),
     
-    // Botones modo
     btnUSDaBs: document.getElementById('btnUSDaBs'),
     btnBsaUSD: document.getElementById('btnBsaUSD'),
     
-    // Inputs
     cantidad: document.getElementById('cantidad'),
     labelCantidad: document.getElementById('labelCantidad'),
     
-    // Tasa personalizada
     personalizadaGroup: document.getElementById('personalizadaGroup'),
     tasaPersonalizadaInput: document.getElementById('tasaPersonalizadaInput'),
     
-    // Radios
     radios: document.querySelectorAll('input[name="tasa"]'),
     
-    // Resultados
     resultadoValor: document.getElementById('resultadoValor'),
     resultadoDetalle: document.getElementById('resultadoDetalle'),
     ultimaActualizacion: document.getElementById('ultimaActualizacion'),
     
-    // Cards para resaltar
     cards: {
         bcv: document.getElementById('card-bcv'),
         euro: document.getElementById('card-euro'),
@@ -58,7 +54,7 @@ const elementos = {
 };
 
 // ============================================
-// FUNCIÓN PARA FORMATEAR NÚMERO (sin símbolo moneda)
+// FUNCIÓN PARA FORMATEAR NÚMERO
 // ============================================
 function formatearNumero(valor, decimales = 2) {
     if (valor === undefined || valor === null || isNaN(valor)) return 'N/A';
@@ -67,6 +63,35 @@ function formatearNumero(valor, decimales = 2) {
         minimumFractionDigits: decimales,
         maximumFractionDigits: decimales
     }).format(valor);
+}
+
+// ============================================
+// FUNCIÓN PARA PARSEAR NÚMERO CON FORMATO VENEZOLANO
+// ============================================
+function parsearNumero(valorStr) {
+    if (!valorStr) return NaN;
+    
+    // Reemplazar puntos por nada (separadores de miles) y coma por punto (decimal)
+    let limpio = valorStr.toString()
+        .replace(/\./g, '')
+        .replace(',', '.');
+    
+    return parseFloat(limpio);
+}
+
+// ============================================
+// FUNCIÓN PARA LIMITAR A 2 DECIMALES
+// ============================================
+function limitarDosDecimales(valor) {
+    if (isNaN(valor)) return 0;
+    return Math.round(valor * 100) / 100;
+}
+
+// ============================================
+// FUNCIÓN PARA OBTENER VALOR ACTUAL DEL INPUT
+// ============================================
+function obtenerCantidad() {
+    return parsearNumero(elementos.cantidad.value);
 }
 
 // ============================================
@@ -89,16 +114,17 @@ function calcularPromedioTasas() {
 // FUNCIÓN PARA ACTUALIZAR TASA PERSONALIZADA
 // ============================================
 function actualizarTasaPersonalizadaPorDefecto() {
-    const promedio = calcularPromedioTasas();
-    tasaPersonalizada = promedio;
-    elementos.tasaPersonalizadaInput.value = formatearNumero(promedio, 2);
+    if (!editandoPersonalizada) {
+        const promedio = calcularPromedioTasas();
+        tasaPersonalizada = limitarDosDecimales(promedio);
+        elementos.tasaPersonalizadaInput.value = formatearNumero(tasaPersonalizada, 2);
+    }
 }
 
 // ============================================
 // FUNCIONES DE APIs
 // ============================================
 
-// Obtener USDT - USA EL BID DE BINANCE P2P
 async function obtenerTasaUSDT() {
     try {
         const response = await fetch(CONFIG.apis.usdt, { timeout: 5000 });
@@ -119,7 +145,6 @@ async function obtenerTasaUSDT() {
     }
 }
 
-// Obtener Euro
 async function obtenerTasaEuro() {
     try {
         const response = await fetch(CONFIG.apis.euro);
@@ -138,7 +163,7 @@ async function obtenerTasaEuro() {
 // ============================================
 
 function convertir() {
-    const cantidad = parseFloat(elementos.cantidad.value);
+    const cantidad = obtenerCantidad();
     
     if (isNaN(cantidad) || cantidad <= 0) {
         elementos.resultadoValor.textContent = formatearNumero(0, 2);
@@ -195,7 +220,6 @@ function convertir() {
         elementos.resultadoValor.textContent = formatearNumero(resultado, 4);
     }
     
-    // Resaltar card seleccionada
     if (tasaSeleccionada !== 'personalizada') {
         Object.values(elementos.cards).forEach(card => {
             if (card) card.style.transform = 'scale(1)';
@@ -225,7 +249,6 @@ async function actualizarTasas() {
             fetch(CONFIG.apis.euro)
         ]);
         
-        // BCV (4 decimales)
         if (resBCV.ok) {
             const data = await resBCV.json();
             tasas.bcv = data.promedio || data.price;
@@ -235,7 +258,6 @@ async function actualizarTasas() {
             elementos.tasaBCV.textContent = 'Error';
         }
         
-        // Euro (2 decimales)
         if (resEuro.ok) {
             const data = await resEuro.json();
             tasas.euro = data.promedio || data.price;
@@ -250,16 +272,22 @@ async function actualizarTasas() {
             }
         }
         
-        // USDT (2 decimales)
         tasas.usdt = await obtenerTasaUSDT();
         elementos.tasaUSDT.textContent = tasas.usdt ? 
             formatearNumero(tasas.usdt, 2) : 'No disponible';
         
-        // Actualizar tasa personalizada
         actualizarTasaPersonalizadaPorDefecto();
         
         ultimaActualizacion = new Date();
         elementos.ultimaActualizacion.textContent = `Actualizado: ${ultimaActualizacion.toLocaleTimeString()}`;
+        
+        // Solo formatear si no está en edición
+        if (!editandoCantidad) {
+            const cantidadActual = obtenerCantidad();
+            if (!isNaN(cantidadActual) && cantidadActual > 0) {
+                elementos.cantidad.value = formatearNumero(cantidadActual, 2);
+            }
+        }
         
         convertir();
         
@@ -281,13 +309,113 @@ elementos.radios.forEach(radio => {
     });
 });
 
-elementos.tasaPersonalizadaInput.addEventListener('input', () => {
-    let valorStr = elementos.tasaPersonalizadaInput.value.replace(/[^\d.,-]/g, '');
-    valorStr = valorStr.replace(',', '.');
-    const valor = parseFloat(valorStr);
+// ============================================
+// EVENTOS PARA CANTIDAD
+// ============================================
+
+// Al hacer focus, mostrar el número sin formato
+elementos.cantidad.addEventListener('focus', (e) => {
+    editandoCantidad = true;
+    const valorNumerico = obtenerCantidad();
+    if (!isNaN(valorNumerico) && valorNumerico > 0) {
+        // Mostrar sin separadores de miles, solo con coma decimal
+        e.target.value = valorNumerico.toString().replace('.', ',');
+    } else {
+        e.target.value = '';
+    }
+});
+
+elementos.cantidad.addEventListener('input', (e) => {
+    let valor = e.target.value;
     
+    // REEMPLAZAR PUNTO POR COMA INMEDIATAMENTE
+    valor = valor.replace(/\./g, ',');
+    
+    // Prevenir más de una coma
+    const partes = valor.split(',');
+    if (partes.length > 2) {
+        valor = partes[0] + ',' + partes.slice(1).join('');
+    }
+    
+    // Limitar decimales a 2 después de la coma
+    if (partes.length === 2 && partes[1].length > 2) {
+        valor = partes[0] + ',' + partes[1].substring(0, 2);
+    }
+    
+    // Solo permitir dígitos y coma
+    valor = valor.replace(/[^\d,]/g, '');
+    
+    // Actualizar el input con el valor corregido
+    if (e.target.value !== valor) {
+        e.target.value = valor;
+    }
+    
+    // CANCELAR cualquier timeout pendiente
+    clearTimeout(timeoutId);
+    
+    // Crear NUEVO timeout para convertir después de 300ms
+    timeoutId = setTimeout(() => {
+        convertir();
+    }, 300);
+});
+
+elementos.cantidad.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        clearTimeout(timeoutId);
+        convertir();
+    }
+});
+
+// Al salir del campo, formatear con separadores de miles
+elementos.cantidad.addEventListener('blur', () => {
+    editandoCantidad = false;
+    const valor = obtenerCantidad();
     if (!isNaN(valor) && valor > 0) {
-        tasaPersonalizada = valor;
+        elementos.cantidad.value = formatearNumero(valor, 2);
+    } else {
+        elementos.cantidad.value = '';
+    }
+});
+
+// ============================================
+// EVENTOS PARA TASA PERSONALIZADA
+// ============================================
+elementos.tasaPersonalizadaInput.addEventListener('focus', () => {
+    editandoPersonalizada = true;
+    // Mostrar valor sin formato para editar
+    if (tasaPersonalizada && tasaPersonalizada > 0) {
+        elementos.tasaPersonalizadaInput.value = tasaPersonalizada.toString().replace('.', ',');
+    } else {
+        elementos.tasaPersonalizadaInput.value = '';
+    }
+});
+
+elementos.tasaPersonalizadaInput.addEventListener('input', (e) => {
+    let valor = e.target.value;
+    
+    // REEMPLAZAR PUNTO POR COMA INMEDIATAMENTE
+    valor = valor.replace(/\./g, ',');
+    
+    // Prevenir más de una coma
+    const partes = valor.split(',');
+    if (partes.length > 2) {
+        valor = partes[0] + ',' + partes.slice(1).join('');
+    }
+    
+    // Limitar decimales a 2
+    if (partes.length === 2 && partes[1].length > 2) {
+        valor = partes[0] + ',' + partes[1].substring(0, 2);
+    }
+    
+    // Solo permitir dígitos y coma
+    valor = valor.replace(/[^\d,]/g, '');
+    
+    e.target.value = valor;
+    
+    const valorNumerico = parsearNumero(valor);
+    
+    if (!isNaN(valorNumerico) && valorNumerico > 0) {
+        tasaPersonalizada = limitarDosDecimales(valorNumerico);
         
         let tasaSeleccionada = 'bcv';
         for (const radio of elementos.radios) {
@@ -296,14 +424,28 @@ elementos.tasaPersonalizadaInput.addEventListener('input', () => {
                 break;
             }
         }
-        if (tasaSeleccionada === 'personalizada' && elementos.cantidad.value) {
+        if (tasaSeleccionada === 'personalizada' && obtenerCantidad() > 0) {
             convertir();
         }
-        
-        elementos.tasaPersonalizadaInput.value = formatearNumero(valor, 2);
     }
 });
 
+elementos.tasaPersonalizadaInput.addEventListener('blur', () => {
+    const valorNumerico = parsearNumero(elementos.tasaPersonalizadaInput.value);
+    
+    if (!isNaN(valorNumerico) && valorNumerico > 0) {
+        tasaPersonalizada = limitarDosDecimales(valorNumerico);
+        elementos.tasaPersonalizadaInput.value = formatearNumero(tasaPersonalizada, 2);
+    } else {
+        elementos.tasaPersonalizadaInput.value = '';
+    }
+    
+    editandoPersonalizada = false;
+});
+
+// ============================================
+// EVENTOS PARA MODO
+// ============================================
 elementos.btnUSDaBs.addEventListener('click', () => {
     elementos.btnUSDaBs.classList.add('active');
     elementos.btnBsaUSD.classList.remove('active');
@@ -318,23 +460,6 @@ elementos.btnBsaUSD.addEventListener('click', () => {
     modo = 'BsaUSD';
     elementos.labelCantidad.textContent = 'Cantidad en Bs';
     convertir();
-});
-
-let timeoutId;
-elementos.cantidad.addEventListener('input', () => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(convertir, 300);
-});
-
-elementos.cantidad.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') convertir();
-});
-
-elementos.cantidad.addEventListener('blur', () => {
-    const valor = parseFloat(elementos.cantidad.value);
-    if (!isNaN(valor) && valor > 0) {
-        elementos.cantidad.value = formatearNumero(valor, 2);
-    }
 });
 
 // ============================================
