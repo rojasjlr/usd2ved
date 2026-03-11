@@ -1,4 +1,20 @@
 {
+  "name": "Conversor USD VED",
+  "short_name": "USD2VEB",
+  "description": "Conversor de divisas con tasas actualizadas de Venezuela",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2150/2150150.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}{
   "name": "Conversor USD VES",
   "short_name": "USD2VES",
   "description": "Conversor de divisas con tasas actualizadas de Venezuela",
