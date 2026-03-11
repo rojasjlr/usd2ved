@@ -5,7 +5,8 @@
 // Configuración de APIs
 const CONFIG = {
     apis: {
-        bcv: 'https://ve.dolarapi.com/v1/dolares/oficial',
+        bcvPrincipal: 'https://bcv-api.rafnixg.dev/rates/',
+        bcvRespaldo: 'https://ve.dolarapi.com/v1/dolares/oficial',
         euro: 'https://ve.dolarapi.com/v1/euros/oficial',
         usdt: 'https://criptoya.com/api/usdt/ves/1'
     }
@@ -18,32 +19,32 @@ let tasas = {
     usdt: null
 };
 
+let fechaTasaBCV = null;
 let tasaPersonalizada = 0.00;
-let modo = 'USDaBs';
-let ultimaActualizacion = null;
 let editandoPersonalizada = false;
-let editandoCantidad = false;
+let editandoUSD = false;
+let editandoVES = false;
+let ultimoEditado = 'usd'; // 'usd' o 'ves' - por defecto USD
 let timeoutId;
 
 // Elementos del DOM
 const elementos = {
     tasaBCV: document.getElementById('tasaBCV'),
+    fechaBCV: document.getElementById('fechaBCV'),
     tasaEuro: document.getElementById('tasaEuro'),
     tasaUSDT: document.getElementById('tasaUSDT'),
     
-    btnUSDaBs: document.getElementById('btnUSDaBs'),
-    btnBsaUSD: document.getElementById('btnBsaUSD'),
+    inputUSD: document.getElementById('inputUSD'),
+    inputVES: document.getElementById('inputVES'),
     
-    cantidad: document.getElementById('cantidad'),
-    labelCantidad: document.getElementById('labelCantidad'),
+    inputUSDGroup: document.querySelector('.input-usd'),
+    inputVESGroup: document.querySelector('.input-ves'),
     
     personalizadaGroup: document.getElementById('personalizadaGroup'),
     tasaPersonalizadaInput: document.getElementById('tasaPersonalizadaInput'),
     
     radios: document.querySelectorAll('input[name="tasa"]'),
     
-    resultadoValor: document.getElementById('resultadoValor'),
-    resultadoDetalle: document.getElementById('resultadoDetalle'),
     ultimaActualizacion: document.getElementById('ultimaActualizacion'),
     
     cards: {
@@ -59,10 +60,13 @@ const elementos = {
 function formatearNumero(valor, decimales = 2) {
     if (valor === undefined || valor === null || isNaN(valor)) return 'N/A';
     
-    return new Intl.NumberFormat('es-VE', {
-        minimumFractionDigits: decimales,
-        maximumFractionDigits: decimales
-    }).format(valor);
+    let valorRedondeado = Number(valor).toFixed(decimales);
+    let partes = valorRedondeado.split('.');
+    let entero = partes[0];
+    let decimal = partes[1];
+
+    entero = entero.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return entero + ',' + decimal;
 }
 
 // ============================================
@@ -71,7 +75,6 @@ function formatearNumero(valor, decimales = 2) {
 function parsearNumero(valorStr) {
     if (!valorStr) return NaN;
     
-    // Reemplazar puntos por nada (separadores de miles) y coma por punto (decimal)
     let limpio = valorStr.toString()
         .replace(/\./g, '')
         .replace(',', '.');
@@ -88,10 +91,156 @@ function limitarDosDecimales(valor) {
 }
 
 // ============================================
-// FUNCIÓN PARA OBTENER VALOR ACTUAL DEL INPUT
+// FUNCIÓN PARA FORMATEAR FECHA
 // ============================================
-function obtenerCantidad() {
-    return parsearNumero(elementos.cantidad.value);
+function formatearFecha(fechaStr) {
+    if (!fechaStr) return '';
+    
+    try {
+        const fecha = new Date(fechaStr);
+        if (isNaN(fecha.getTime())) return '';
+        
+        const dia = fecha.getDate().toString().padStart(2, '0');
+        const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
+        const año = fecha.getFullYear();
+        
+        return `📅 ${dia}/${mes}/${año}`;
+    } catch (e) {
+        return '';
+    }
+}
+
+// ============================================
+// FUNCIÓN PARA OBTENER TASA SELECCIONADA
+// ============================================
+function obtenerTasaSeleccionada() {
+    for (const radio of elementos.radios) {
+        if (radio.checked) {
+            if (radio.value === 'personalizada') {
+                return tasaPersonalizada;
+            } else {
+                return tasas[radio.value];
+            }
+        }
+    }
+    return tasas.bcv; // Default
+}
+
+// ============================================
+// FUNCIONES DE CONVERSIÓN
+// ============================================
+
+function convertirUSDaVES(usd) {
+    const tasa = obtenerTasaSeleccionada();
+    if (!tasa || isNaN(usd)) return NaN;
+    return usd * tasa;
+}
+
+function convertirVESaUSD(ves) {
+    const tasa = obtenerTasaSeleccionada();
+    if (!tasa || isNaN(ves)) return NaN;
+    return ves / tasa;
+}
+
+// ============================================
+// FUNCIONES PARA EFECTOS VISUALES
+// ============================================
+
+function actualizarEnfoqueVisual() {
+    // Limpiar clases de edición
+    elementos.inputUSDGroup.classList.remove('editing');
+    elementos.inputVESGroup.classList.remove('editing');
+    
+    // Aplicar clase según el último editado
+    if (ultimoEditado === 'usd') {
+        elementos.inputUSDGroup.classList.add('editing');
+    } else if (ultimoEditado === 'ves') {
+        elementos.inputVESGroup.classList.add('editing');
+    }
+}
+
+// ============================================
+// FUNCIÓN PARA ACTUALIZAR DESDE USD
+// ============================================
+function actualizarDesdeUSD() {
+    if (editandoVES) return; // Evitar loops
+    
+    editandoUSD = true;
+    ultimoEditado = 'usd';
+    actualizarEnfoqueVisual();
+    
+    const usd = parsearNumero(elementos.inputUSD.value);
+    
+    if (!isNaN(usd) && usd > 0) {
+        const ves = convertirUSDaVES(usd);
+        if (!isNaN(ves)) {
+            elementos.inputVES.value = formatearNumero(ves, 2);
+        }
+    } else {
+        elementos.inputVES.value = '';
+    }
+    
+    // Efecto visual en la tarjeta seleccionada
+    const tasaSeleccionada = obtenerRadioSeleccionado();
+    if (tasaSeleccionada !== 'personalizada' && elementos.cards[tasaSeleccionada]) {
+        Object.values(elementos.cards).forEach(card => {
+            if (card) card.style.transform = 'scale(1)';
+        });
+        elementos.cards[tasaSeleccionada].style.transform = 'scale(1.02)';
+        setTimeout(() => {
+            elementos.cards[tasaSeleccionada].style.transform = 'scale(1)';
+        }, 200);
+    }
+    
+    editandoUSD = false;
+}
+
+// ============================================
+// FUNCIÓN PARA ACTUALIZAR DESDE VES
+// ============================================
+function actualizarDesdeVES() {
+    if (editandoUSD) return; // Evitar loops
+    
+    editandoVES = true;
+    ultimoEditado = 'ves';
+    actualizarEnfoqueVisual();
+    
+    const ves = parsearNumero(elementos.inputVES.value);
+    
+    if (!isNaN(ves) && ves > 0) {
+        const usd = convertirVESaUSD(ves);
+        if (!isNaN(usd)) {
+            elementos.inputUSD.value = formatearNumero(usd, 2);
+        }
+    } else {
+        elementos.inputUSD.value = '';
+    }
+    
+    // Efecto visual en la tarjeta seleccionada
+    const tasaSeleccionada = obtenerRadioSeleccionado();
+    if (tasaSeleccionada !== 'personalizada' && elementos.cards[tasaSeleccionada]) {
+        Object.values(elementos.cards).forEach(card => {
+            if (card) card.style.transform = 'scale(1)';
+        });
+        elementos.cards[tasaSeleccionada].style.transform = 'scale(1.02)';
+        setTimeout(() => {
+            elementos.cards[tasaSeleccionada].style.transform = 'scale(1)';
+        }, 200);
+    }
+    
+    editandoVES = false;
+}
+
+// ============================================
+// FUNCIÓN AUXILIAR PARA OBTENER RADIO SELECCIONADO
+// ============================================
+function obtenerRadioSeleccionado() {
+    for (const radio of elementos.radios) {
+        if (radio.checked) {
+            return radio.value;
+        }
+    }
+    return 'bcv';
 }
 
 // ============================================
@@ -125,9 +274,50 @@ function actualizarTasaPersonalizadaPorDefecto() {
 // FUNCIONES DE APIs
 // ============================================
 
-async function obtenerTasaUSDT() {
+async function obtenerTasaBCV() {
     try {
-        const response = await fetch(CONFIG.apis.usdt, { timeout: 5000 });
+        const response = await fetch(CONFIG.apis.bcvPrincipal);
+        if (response.ok) {
+            const data = await response.json();
+            console.log('✅ Tasa BCV obtenida de API principal:', data.dollar);
+            
+            if (data.date) {
+                fechaTasaBCV = data.date;
+            }
+            
+            return data.dollar;
+        }
+    } catch (e) {
+        console.log('⚠️ Error con API principal, usando respaldo:', e);
+    }
+    
+    try {
+        const response = await fetch(CONFIG.apis.bcvRespaldo);
+        if (response.ok) {
+            const data = await response.json();
+            console.log('✅ Tasa BCV obtenida de API respaldo:', data.promedio || data.price);
+            
+            if (data.fechaActualizacion || data.date) {
+                fechaTasaBCV = data.fechaActualizacion || data.date;
+            }
+            
+            return data.promedio || data.price;
+        }
+    } catch (e) {
+        console.error('❌ Ambas APIs de BCV fallaron:', e);
+    }
+    
+    return null;
+}
+
+async function obtenerTasaUSDT() {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    try {
+        const response = await fetch(CONFIG.apis.usdt, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
         if (!response.ok) return null;
         
         const data = await response.json();
@@ -140,7 +330,12 @@ async function obtenerTasaUSDT() {
         return null;
         
     } catch (e) {
-        console.error('Error obteniendo USDT:', e);
+        clearTimeout(timeoutId);
+        if (e.name === 'AbortError') {
+            console.error('⏰ Timeout obteniendo USDT');
+        } else {
+            console.error('Error obteniendo USDT:', e);
+        }
         return null;
     }
 }
@@ -159,110 +354,31 @@ async function obtenerTasaEuro() {
 }
 
 // ============================================
-// CONVERSIÓN
-// ============================================
-
-function convertir() {
-    const cantidad = obtenerCantidad();
-    
-    if (isNaN(cantidad) || cantidad <= 0) {
-        elementos.resultadoValor.textContent = formatearNumero(0, 2);
-        elementos.resultadoDetalle.textContent = 'Ingresa una cantidad';
-        return;
-    }
-    
-    let tasaSeleccionada = 'bcv';
-    for (const radio of elementos.radios) {
-        if (radio.checked) {
-            tasaSeleccionada = radio.value;
-            break;
-        }
-    }
-    
-    let tasa;
-    if (tasaSeleccionada === 'personalizada') {
-        tasa = tasaPersonalizada;
-    } else {
-        tasa = tasas[tasaSeleccionada];
-    }
-    
-    if (!tasa) {
-        elementos.resultadoValor.textContent = formatearNumero(0, 2);
-        elementos.resultadoDetalle.textContent = 'Tasa no disponible';
-        return;
-    }
-    
-    let resultado;
-    let decimalesTasa = tasaSeleccionada === 'bcv' ? 4 : 2;
-    
-    if (modo === 'USDaBs') {
-        resultado = cantidad * tasa;
-        
-        const cantidadFormateada = formatearNumero(cantidad, 2);
-        const tasaFormateada = formatearNumero(tasa, decimalesTasa);
-        const resultadoFormateado = formatearNumero(resultado, 2);
-        
-        elementos.resultadoDetalle.textContent = 
-            `${cantidadFormateada} USD × ${tasaFormateada} = ${resultadoFormateado} Bs`;
-        
-        elementos.resultadoValor.textContent = formatearNumero(resultado, 2);
-        
-    } else {
-        resultado = cantidad / tasa;
-        
-        const cantidadFormateada = formatearNumero(cantidad, 2);
-        const tasaFormateada = formatearNumero(tasa, decimalesTasa);
-        const resultadoFormateado = formatearNumero(resultado, 4);
-        
-        elementos.resultadoDetalle.textContent = 
-            `${cantidadFormateada} Bs ÷ ${tasaFormateada} = ${resultadoFormateado} USD`;
-        
-        elementos.resultadoValor.textContent = formatearNumero(resultado, 4);
-    }
-    
-    if (tasaSeleccionada !== 'personalizada') {
-        Object.values(elementos.cards).forEach(card => {
-            if (card) card.style.transform = 'scale(1)';
-        });
-        if (elementos.cards[tasaSeleccionada]) {
-            elementos.cards[tasaSeleccionada].style.transform = 'scale(1.02)';
-            setTimeout(() => {
-                elementos.cards[tasaSeleccionada].style.transform = 'scale(1)';
-            }, 200);
-        }
-    }
-}
-
-// ============================================
 // ACTUALIZAR TASAS
 // ============================================
 
 async function actualizarTasas() {
     elementos.tasaBCV.textContent = '...';
+    elementos.fechaBCV.textContent = '';
     elementos.tasaEuro.textContent = '...';
     elementos.tasaUSDT.textContent = '...';
     elementos.ultimaActualizacion.textContent = 'Actualizando...';
     
     try {
-        const [resBCV, resEuro] = await Promise.all([
-            fetch(CONFIG.apis.bcv),
-            fetch(CONFIG.apis.euro)
-        ]);
-        
-        if (resBCV.ok) {
-            const data = await resBCV.json();
-            tasas.bcv = data.promedio || data.price;
-            elementos.tasaBCV.textContent = tasas.bcv ? 
-                formatearNumero(tasas.bcv, 4) : 'N/A';
+        tasas.bcv = await obtenerTasaBCV();
+        if (tasas.bcv) {
+            elementos.tasaBCV.textContent = formatearNumero(tasas.bcv, 4);
+            if (fechaTasaBCV) {
+                elementos.fechaBCV.textContent = formatearFecha(fechaTasaBCV);
+            }
         } else {
             elementos.tasaBCV.textContent = 'Error';
+            elementos.fechaBCV.textContent = '';
         }
         
-        if (resEuro.ok) {
-            const data = await resEuro.json();
-            tasas.euro = data.promedio || data.price;
-            elementos.tasaEuro.textContent = tasas.euro ? 
-                formatearNumero(tasas.euro, 2) : 'N/A';
+        tasas.euro = await obtenerTasaEuro();
+        if (tasas.euro) {
+            elementos.tasaEuro.textContent = formatearNumero(tasas.euro, 2);
         } else {
             if (tasas.bcv) {
                 tasas.euro = tasas.bcv * 1.07;
@@ -273,23 +389,32 @@ async function actualizarTasas() {
         }
         
         tasas.usdt = await obtenerTasaUSDT();
-        elementos.tasaUSDT.textContent = tasas.usdt ? 
-            formatearNumero(tasas.usdt, 2) : 'No disponible';
+        if (tasas.usdt) {
+            elementos.tasaUSDT.textContent = formatearNumero(tasas.usdt, 2);
+        } else {
+            elementos.tasaUSDT.textContent = 'No disponible';
+        }
         
         actualizarTasaPersonalizadaPorDefecto();
         
         ultimaActualizacion = new Date();
         elementos.ultimaActualizacion.textContent = `Actualizado: ${ultimaActualizacion.toLocaleTimeString()}`;
         
-        // Solo formatear si no está en edición
-        if (!editandoCantidad) {
-            const cantidadActual = obtenerCantidad();
-            if (!isNaN(cantidadActual) && cantidadActual > 0) {
-                elementos.cantidad.value = formatearNumero(cantidadActual, 2);
+        // Actualizar conversión basada en el último campo editado
+        if (ultimoEditado === 'usd') {
+            const usd = parsearNumero(elementos.inputUSD.value);
+            if (!isNaN(usd) && usd > 0) {
+                elementos.inputVES.value = formatearNumero(convertirUSDaVES(usd), 2);
+            }
+        } else if (ultimoEditado === 'ves') {
+            const ves = parsearNumero(elementos.inputVES.value);
+            if (!isNaN(ves) && ves > 0) {
+                elementos.inputUSD.value = formatearNumero(convertirVESaUSD(ves), 2);
             }
         }
         
-        convertir();
+        // Mantener el enfoque visual
+        actualizarEnfoqueVisual();
         
     } catch (error) {
         console.error('Error actualizando tasas:', error);
@@ -298,91 +423,153 @@ async function actualizarTasas() {
 }
 
 // ============================================
-// EVENTOS
+// EVENTOS PARA INPUT USD
 // ============================================
 
-elementos.radios.forEach(radio => {
-    radio.addEventListener('change', (e) => {
-        elementos.personalizadaGroup.style.display = 
-            e.target.value === 'personalizada' ? 'block' : 'none';
-        convertir();
-    });
-});
-
-// ============================================
-// EVENTOS PARA CANTIDAD
-// ============================================
-
-// Al hacer focus, mostrar el número sin formato
-elementos.cantidad.addEventListener('focus', (e) => {
-    editandoCantidad = true;
-    const valorNumerico = obtenerCantidad();
+elementos.inputUSD.addEventListener('focus', (e) => {
+    editandoUSD = true;
+    ultimoEditado = 'usd';
+    actualizarEnfoqueVisual();
+    
+    const valorNumerico = parsearNumero(e.target.value);
     if (!isNaN(valorNumerico) && valorNumerico > 0) {
-        // Mostrar sin separadores de miles, solo con coma decimal
         e.target.value = valorNumerico.toString().replace('.', ',');
     } else {
         e.target.value = '';
     }
 });
 
-elementos.cantidad.addEventListener('input', (e) => {
+elementos.inputUSD.addEventListener('input', (e) => {
     let valor = e.target.value;
     
-    // REEMPLAZAR PUNTO POR COMA INMEDIATAMENTE
     valor = valor.replace(/\./g, ',');
     
-    // Prevenir más de una coma
     const partes = valor.split(',');
     if (partes.length > 2) {
         valor = partes[0] + ',' + partes.slice(1).join('');
     }
     
-    // Limitar decimales a 2 después de la coma
     if (partes.length === 2 && partes[1].length > 2) {
         valor = partes[0] + ',' + partes[1].substring(0, 2);
     }
     
-    // Solo permitir dígitos y coma
     valor = valor.replace(/[^\d,]/g, '');
     
-    // Actualizar el input con el valor corregido
     if (e.target.value !== valor) {
         e.target.value = valor;
     }
     
-    // CANCELAR cualquier timeout pendiente
     clearTimeout(timeoutId);
     
-    // Crear NUEVO timeout para convertir después de 300ms
     timeoutId = setTimeout(() => {
-        convertir();
+        actualizarDesdeUSD();
     }, 300);
 });
 
-elementos.cantidad.addEventListener('keypress', (e) => {
+elementos.inputUSD.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         clearTimeout(timeoutId);
-        convertir();
+        actualizarDesdeUSD();
     }
 });
 
-// Al salir del campo, formatear con separadores de miles
-elementos.cantidad.addEventListener('blur', () => {
-    editandoCantidad = false;
-    const valor = obtenerCantidad();
+elementos.inputUSD.addEventListener('blur', () => {
+    const valor = parsearNumero(elementos.inputUSD.value);
     if (!isNaN(valor) && valor > 0) {
-        elementos.cantidad.value = formatearNumero(valor, 2);
+        elementos.inputUSD.value = formatearNumero(valor, 2);
     } else {
-        elementos.cantidad.value = '';
+        elementos.inputUSD.value = '';
     }
+    editandoUSD = false;
+    // NO desactivamos el enfoque visual, se mantiene el último editado
+});
+
+// ============================================
+// EVENTOS PARA INPUT VES
+// ============================================
+
+elementos.inputVES.addEventListener('focus', (e) => {
+    editandoVES = true;
+    ultimoEditado = 'ves';
+    actualizarEnfoqueVisual();
+    
+    const valorNumerico = parsearNumero(e.target.value);
+    if (!isNaN(valorNumerico) && valorNumerico > 0) {
+        e.target.value = valorNumerico.toString().replace('.', ',');
+    } else {
+        e.target.value = '';
+    }
+});
+
+elementos.inputVES.addEventListener('input', (e) => {
+    let valor = e.target.value;
+    
+    valor = valor.replace(/\./g, ',');
+    
+    const partes = valor.split(',');
+    if (partes.length > 2) {
+        valor = partes[0] + ',' + partes.slice(1).join('');
+    }
+    
+    if (partes.length === 2 && partes[1].length > 2) {
+        valor = partes[0] + ',' + partes[1].substring(0, 2);
+    }
+    
+    valor = valor.replace(/[^\d,]/g, '');
+    
+    if (e.target.value !== valor) {
+        e.target.value = valor;
+    }
+    
+    clearTimeout(timeoutId);
+    
+    timeoutId = setTimeout(() => {
+        actualizarDesdeVES();
+    }, 300);
+});
+
+elementos.inputVES.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        clearTimeout(timeoutId);
+        actualizarDesdeVES();
+    }
+});
+
+elementos.inputVES.addEventListener('blur', () => {
+    const valor = parsearNumero(elementos.inputVES.value);
+    if (!isNaN(valor) && valor > 0) {
+        elementos.inputVES.value = formatearNumero(valor, 2);
+    } else {
+        elementos.inputVES.value = '';
+    }
+    editandoVES = false;
+    // NO desactivamos el enfoque visual, se mantiene el último editado
+});
+
+// ============================================
+// EVENTOS PARA RADIO BUTTONS
+// ============================================
+
+elementos.radios.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        elementos.personalizadaGroup.style.display = 
+            e.target.value === 'personalizada' ? 'block' : 'none';
+        
+        // Al cambiar la tasa, actualizar según el último campo editado
+        if (ultimoEditado === 'usd') {
+            actualizarDesdeUSD();
+        } else if (ultimoEditado === 'ves') {
+            actualizarDesdeVES();
+        }
+    });
 });
 
 // ============================================
 // EVENTOS PARA TASA PERSONALIZADA
 // ============================================
+
 elementos.tasaPersonalizadaInput.addEventListener('focus', () => {
     editandoPersonalizada = true;
-    // Mostrar valor sin formato para editar
     if (tasaPersonalizada && tasaPersonalizada > 0) {
         elementos.tasaPersonalizadaInput.value = tasaPersonalizada.toString().replace('.', ',');
     } else {
@@ -393,21 +580,17 @@ elementos.tasaPersonalizadaInput.addEventListener('focus', () => {
 elementos.tasaPersonalizadaInput.addEventListener('input', (e) => {
     let valor = e.target.value;
     
-    // REEMPLAZAR PUNTO POR COMA INMEDIATAMENTE
     valor = valor.replace(/\./g, ',');
     
-    // Prevenir más de una coma
     const partes = valor.split(',');
     if (partes.length > 2) {
         valor = partes[0] + ',' + partes.slice(1).join('');
     }
     
-    // Limitar decimales a 2
     if (partes.length === 2 && partes[1].length > 2) {
         valor = partes[0] + ',' + partes[1].substring(0, 2);
     }
     
-    // Solo permitir dígitos y coma
     valor = valor.replace(/[^\d,]/g, '');
     
     e.target.value = valor;
@@ -417,15 +600,13 @@ elementos.tasaPersonalizadaInput.addEventListener('input', (e) => {
     if (!isNaN(valorNumerico) && valorNumerico > 0) {
         tasaPersonalizada = limitarDosDecimales(valorNumerico);
         
-        let tasaSeleccionada = 'bcv';
-        for (const radio of elementos.radios) {
-            if (radio.checked) {
-                tasaSeleccionada = radio.value;
-                break;
+        // Si la tasa personalizada está seleccionada, actualizar según último editado
+        if (obtenerRadioSeleccionado() === 'personalizada') {
+            if (ultimoEditado === 'usd') {
+                actualizarDesdeUSD();
+            } else if (ultimoEditado === 'ves') {
+                actualizarDesdeVES();
             }
-        }
-        if (tasaSeleccionada === 'personalizada' && obtenerCantidad() > 0) {
-            convertir();
         }
     }
 });
@@ -444,27 +625,19 @@ elementos.tasaPersonalizadaInput.addEventListener('blur', () => {
 });
 
 // ============================================
-// EVENTOS PARA MODO
-// ============================================
-elementos.btnUSDaBs.addEventListener('click', () => {
-    elementos.btnUSDaBs.classList.add('active');
-    elementos.btnBsaUSD.classList.remove('active');
-    modo = 'USDaBs';
-    elementos.labelCantidad.textContent = 'Cantidad en USD';
-    convertir();
-});
-
-elementos.btnBsaUSD.addEventListener('click', () => {
-    elementos.btnBsaUSD.classList.add('active');
-    elementos.btnUSDaBs.classList.remove('active');
-    modo = 'BsaUSD';
-    elementos.labelCantidad.textContent = 'Cantidad en Bs';
-    convertir();
-});
-
-// ============================================
 // INICIO
 // ============================================
+
+// Establecer valores iniciales
+elementos.inputUSD.value = '1,00';
+const tasaInicial = obtenerTasaSeleccionada();
+if (tasaInicial) {
+    elementos.inputVES.value = formatearNumero(convertirUSDaVES(1), 2);
+}
+
+// Establecer enfoque visual inicial en USD
+ultimoEditado = 'usd';
+actualizarEnfoqueVisual();
 
 actualizarTasas();
 setInterval(actualizarTasas, 300000);
