@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>USD ↔ VED </title>
+    <title>USD ↔ VED</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2563eb">
@@ -29,6 +29,7 @@
             <div class="card" id="card-bcv">
                 <div class="card-title">BCV USD</div>
                 <div class="card-value" id="tasaBCV">---</div>
+                <div class="card-date" id="fechaBCV"></div>
             </div>
             
             <div class="card" id="card-euro">
@@ -43,19 +44,18 @@
         </div>
 
         <div class="conversor">
-            <div class="modos">
-                <button class="modo-btn active" id="btnUSDaBs">USD → Bs</button>
-                <button class="modo-btn" id="btnBsaUSD">Bs → USD</button>
-            </div>
+            <!-- INPUTS DIRECTOS (AMBOS EDITABLES) -->
+            <div class="inputs-conversor">
+                <div class="input-group input-usd">
+                    <label>USD (Dólares)</label>
+                    <input type="text" id="inputUSD" placeholder="0,00" value="1,00">
+                </div>
 
-            <div class="resultado">
-                <div class="resultado-valor" id="resultadoValor">0,00</div>
-                <div class="resultado-detalle" id="resultadoDetalle">---</div>
-            </div>
-
-            <div class="input-group">
-                <label id="labelCantidad">Cantidad en USD</label>
-                <input type="text" id="cantidad" placeholder="0,00" value="1,00">
+                <div class="input-group input-ves">
+                    <label>VED (Bolívares)</label>
+                    <!-- ELIMINADO EL READONLY -->
+                    <input type="text" id="inputVES" placeholder="0,00" value="---">
+                </div>
             </div>
 
             <div class="personalizada-group" id="personalizadaGroup" style="display: none;">
