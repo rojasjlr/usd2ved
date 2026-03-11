@@ -48,6 +48,10 @@ h1 {
     text-align: center;
     border: 1px solid #e2e8f0;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    min-height: 110px;
 }
 
 .card-title {
@@ -56,140 +60,272 @@ h1 {
     color: #334155;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
 }
 
 .card-value {
     font-size: 18px;
     font-weight: 800;
     color: #0f172a;
+    line-height: 1.2;
+    margin: 4px 0;
+}
+
+/* ESTILO DE FECHA */
+.card-date {
+    font-size: 11px;
+    color: #475569;
+    margin-top: 6px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+    line-height: 1.3;
+    min-height: 16px;
+    border-top: 1px dashed #e2e8f0;
+    padding-top: 6px;
+    width: 100%;
 }
 
 /* Colores representativos para cada tasa */
-#card-bcv .card-value { color: #2563eb; }
+#card-bcv .card-value { color: #16a34a; }
 #card-euro .card-value { color: #0f172a; }
-#card-usdt .card-value { color: #16a34a; }
+#card-usdt .card-value { color: #d69419; }
 
-/* --- SECCIÓN DE BOTONES DE MODO --- */
-.modos {
+/* Efecto hover en tarjetas */
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* --- INPUTS DE CONVERSIÓN DIRECTA --- */
+.inputs-conversor {
     display: flex;
-    gap: 4px;
-    background: #e2e8f0;
-    padding: 4px;
-    border-radius: 12px;
-    margin-bottom: 8px;
-    max-width: 160px;
-    margin-left: auto;
-    margin-right: auto;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 20px;
 }
 
-.modo-btn {
-    flex: 1;
-    padding: 6px 2px;
-    border: none;
-    background: transparent;
-    border-radius: 9px;
-    font-weight: 700;
-    font-size: 10px;
-    color: #64748b;
-    cursor: pointer;
-    transition: 0.2s;
-}
-
-.modo-btn.active {
-    background: white;
-    color: #2563eb;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-/* --- INPUTS Y FORMULARIO --- */
-.conversor {
-    background: #f8fafc;
-    border-radius: 16px;
-    padding: 12px;
+/* Estilo base para inputs */
+.input-group {
+    transition: all 0.3s ease;
 }
 
 .input-group label {
     display: block;
     font-size: 12px;
     margin-bottom: 4px;
-    color: #475569;
+    font-weight: 500;
+    transition: all 0.3s ease;
 }
 
 .input-group input {
     width: 100%;
-    padding: 10px;
+    padding: 14px 12px;
     font-size: 16px;
     border: 2px solid #e2e8f0;
     border-radius: 12px;
     text-align: center;
+    transition: all 0.3s ease;
+    color: #000000;
+    font-weight: 700;
+}
+
+/* --- ESTILOS PARA USD (VERDE DE LA TARJETA BCV) --- */
+.input-usd input {
+    background-color: #16a34a;
+    border: 2px solid #16a34a;
+    color: #ffffff;
+}
+
+.input-usd label {
+    color: #16a34a;
+    font-weight: 700;
+}
+
+/* Efecto cuando USD está siendo editado - VERDE CLARO */
+.input-usd.editing {
+    transform: scale(1.02);
+}
+
+.input-usd.editing input {
+    border-color: #16a34a;
+    box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.3);  /* Sombra verde claro */
+    background-color: #86efac;  /* Verde claro */
+    color: #14532d;  /* Texto verde oscuro para contraste */
+}
+
+.input-usd.editing label {
+    color: #16a34a;
+    font-weight: 800;
+    transform: translateX(5px);
+}
+
+/* --- ESTILOS PARA VES (AZUL OSCURO) --- */
+.input-ves input {
+    background-color: #1e3a8a;
+    border: 2px solid #2563eb;
+    color: #ffffff;
+}
+
+.input-ves label {
+    color: #1e3a8a;
+    font-weight: 700;
+}
+
+/* Efecto cuando VES está siendo editado - AZUL CLARO */
+.input-ves.editing {
+    transform: scale(1.02);
+}
+
+.input-ves.editing input {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.3);  /* Sombra azul claro */
+    background-color: #93c5fd;  /* Azul claro */
+    color: #1e3a8a;  /* Texto azul oscuro para contraste */
+}
+
+.input-ves.editing label {
+    color: #1e3a8a;
+    font-weight: 800;
+    transform: translateX(5px);
+}
+
+/* --- INPUTS Y FORMULARIO (estilos base) --- */
+.conversor {
+    background: #f8fafc;
+    border-radius: 16px;
+    padding: 16px;
+}
+
+.input-group input:focus {
+    outline: none;
 }
 
 /* Selector de radio buttons */
 .tasa-selector {
-    margin-top: 12px;
+    margin-top: 16px;
     font-size: 12px;
+}
+
+.tasa-selector p {
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 8px;
 }
 
 .opciones {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 6px;
+    gap: 8px;
     margin-top: 6px;
 }
 
 .opcion {
     background: white;
-    padding: 6px;
+    padding: 8px 6px;
     border-radius: 8px;
     border: 1px solid #e2e8f0;
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     cursor: pointer;
+    transition: all 0.2s;
+    font-size: 11px;
 }
 
-/* --- RESULTADO FINAL --- */
-.resultado {
-    margin-top: 12px;
-    background: #2563eb;
-    color: white;
-    padding: 10px;
-    border-radius: 16px;
-    text-align: center;
-    line-height: 1.2;
+.opcion:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
 }
 
-.resultado-valor {
-    font-size: 22px;
-    font-weight: 800;
-    margin-bottom: 2px;
+.opcion input[type="radio"] {
+    cursor: pointer;
+    accent-color: #2563eb;
 }
 
-.resultado-detalle {
-    font-size: 9px;
-    opacity: 0.9;
-}
-
-.footer {
-    text-align: center;
-    margin-top: 10px;
-    font-size: 9px;
-    color: #94a3b8;
-}
-
-/* Espacio para tasa personalizada */
+/* --- TASA PERSONALIZADA --- */
 .personalizada-group {
-    margin-top: 10px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px dashed #cbd5e1;
 }
 
 .personalizada-group label {
     font-size: 12px;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
     display: block;
+    color: #475569;
+    font-weight: 500;
 }
 
 .personalizada-group input {
-    padding: 8px;
-    font-size: 14px;
+    width: 100%;
+    padding: 10px;
+    font-size: 15px;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    text-align: center;
+    transition: border-color 0.2s;
+}
+
+.personalizada-group input:focus {
+    outline: none;
+    border-color: #2563eb;
+}
+
+/* --- FOOTER --- */
+.footer {
+    text-align: center;
+    margin-top: 16px;
+    padding-top: 8px;
+    font-size: 9px;
+    color: #94a3b8;
+    border-top: 1px solid #e2e8f0;
+}
+
+/* --- ESTADOS DE CARGA --- */
+.card.loading {
+    opacity: 0.6;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.6; }
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 360px) {
+    .app {
+        padding: 16px;
+    }
+    
+    .card {
+        padding: 12px 4px;
+        min-height: 100px;
+    }
+    
+    .card-value {
+        font-size: 16px;
+    }
+    
+    .card-title {
+        font-size: 10px;
+    }
+    
+    .card-date {
+        font-size: 10px;
+        padding-top: 4px;
+        margin-top: 4px;
+    }
+    
+    .input-usd input,
+    .input-ves input {
+        font-size: 18px !important;
+        padding: 12px;
+    }
+    
+    .opciones {
+        grid-template-columns: 1fr;
+    }
 }
