@@ -12,6 +12,117 @@ const CONFIG = {
     }
 };
 
+// ============================================
+// ALMACENAMIENTO LOCAL (localStorage)
+// ============================================
+
+const STORAGE_KEYS = {
+    tasas: 'usd2ved_tasas',
+    fechaTasaBCV: 'usd2ved_fechaBCV',
+    timestamp: 'usd2ved_timestamp',
+    tasaPersonalizada: 'usd2ved_tasaPersonalizada'
+};
+
+function guardarTasasEnStorage() {
+    try {
+        const datosAGuardar = {
+            tasas: tasas,
+            fechaTasaBCV: fechaTasaBCV,
+            timestamp: new Date().toISOString(),
+            tasaPersonalizada: tasaPersonalizada
+        };
+        
+        localStorage.setItem(STORAGE_KEYS.tasas, JSON.stringify(datosAGuardar));
+        console.log('💾 Tasas guardadas en localStorage');
+    } catch (e) {
+        console.warn('No se pudo guardar en localStorage:', e);
+    }
+}
+
+function cargarTasasDeStorage() {
+    try {
+        const datosGuardados = localStorage.getItem(STORAGE_KEYS.tasas);
+        
+        if (!datosGuardados) {
+            console.log('ℹ️ No hay tasas guardadas previamente');
+            return false;
+        }
+        
+        const datos = JSON.parse(datosGuardados);
+        
+        // Restaurar las tasas
+        if (datos.tasas) {
+            tasas = datos.tasas;
+        }
+        
+        if (datos.fechaTasaBCV) {
+            fechaTasaBCV = datos.fechaTasaBCV;
+        }
+        
+        if (datos.tasaPersonalizada) {
+            tasaPersonalizada = datos.tasaPersonalizada;
+        }
+        
+        console.log('📦 Tasas cargadas desde localStorage:', new Date(datos.timestamp).toLocaleString());
+        return true;
+        
+    } catch (e) {
+        console.error('Error cargando tasas de localStorage:', e);
+        return false;
+    }
+}
+
+function mostrarTasasGuardadas() {
+    // Mostrar las tasas del storage en la interfaz
+    if (tasas.bcv) {
+        elementos.tasaBCV.textContent = formatearNumero(tasas.bcv, 4);
+        if (fechaTasaBCV) {
+            elementos.fechaBCV.textContent = formatearFecha(fechaTasaBCV);
+        }
+    }
+    
+    if (tasas.euro) {
+        elementos.tasaEuro.textContent = formatearNumero(tasas.euro, 2);
+    } else if (tasas.bcv) {
+        // Si no hay euro pero sí BCV, mostrar estimado
+        elementos.tasaEuro.textContent = `${formatearNumero(tasas.bcv * 1.07, 2)} (est.)`;
+    }
+    
+    if (tasas.usdt) {
+        elementos.tasaUSDT.textContent = formatearNumero(tasas.usdt, 2);
+    } else {
+        elementos.tasaUSDT.textContent = 'No disponible';
+    }
+    
+    // Actualizar tasa personalizada
+    elementos.tasaPersonalizadaInput.value = formatearNumero(tasaPersonalizada, 2);
+    
+    // Mostrar en el footer que son datos guardados
+    const timestamp = localStorage.getItem(STORAGE_KEYS.timestamp);
+    if (timestamp) {
+        const fecha = new Date(timestamp);
+        elementos.ultimaActualizacion.textContent = `📦 Datos guardados: ${fecha.toLocaleString()}`;
+    } else {
+        elementos.ultimaActualizacion.textContent = '📦 Mostrando datos guardados';
+    }
+}
+
+function verificarConexion() {
+    return navigator.onLine;
+}
+
+// Escuchar cambios en la conexión
+window.addEventListener('online', () => {
+    console.log('🌐 Conexión restablecida, actualizando tasas...');
+    elementos.ultimaActualizacion.textContent = 'Conexión restablecida, actualizando...';
+    actualizarTasas();
+});
+
+window.addEventListener('offline', () => {
+    console.log('📴 Sin conexión, mostrando últimas tasas guardadas');
+    elementos.ultimaActualizacion.textContent = '📴 Sin conexión - Mostrando últimas tasas guardadas';
+});
+
 // Estado de la aplicación
 let tasas = {
     bcv: null,
@@ -21,6 +132,7 @@ let tasas = {
 
 let fechaTasaBCV = null;
 let tasaPersonalizada = 0.00;
+let ultimaActualizacion;
 let editandoPersonalizada = false;
 let editandoUSD = false;
 let editandoVES = false;
@@ -180,7 +292,7 @@ function actualizarDesdeUSD() {
         elementos.inputVES.value = '';
     }
     
-    // Efecto visual en la tarjeta seleccionada
+    // Efecto visual en la tarjeta seleccionada (solo si NO es personalizada)
     const tasaSeleccionada = obtenerRadioSeleccionado();
     if (tasaSeleccionada !== 'personalizada' && elementos.cards[tasaSeleccionada]) {
         Object.values(elementos.cards).forEach(card => {
@@ -216,7 +328,7 @@ function actualizarDesdeVES() {
         elementos.inputUSD.value = '';
     }
     
-    // Efecto visual en la tarjeta seleccionada
+    // Efecto visual en la tarjeta seleccionada (solo si NO es personalizada)
     const tasaSeleccionada = obtenerRadioSeleccionado();
     if (tasaSeleccionada !== 'personalizada' && elementos.cards[tasaSeleccionada]) {
         Object.values(elementos.cards).forEach(card => {
@@ -275,6 +387,11 @@ function actualizarTasaPersonalizadaPorDefecto() {
 // ============================================
 
 async function obtenerTasaBCV() {
+    if (!verificarConexion()) {
+        console.log('📴 Offline: Devolviendo tasa BCV guardada');
+        return tasas.bcv || null;
+    }
+    
     try {
         const response = await fetch(CONFIG.apis.bcvPrincipal);
         if (response.ok) {
@@ -311,6 +428,11 @@ async function obtenerTasaBCV() {
 }
 
 async function obtenerTasaUSDT() {
+    if (!verificarConexion()) {
+        console.log('📴 Offline: No se puede obtener USDT');
+        return tasas.usdt || null; // Devolver la última tasa guardada si existe
+    }
+    
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
@@ -336,7 +458,7 @@ async function obtenerTasaUSDT() {
         } else {
             console.error('Error obteniendo USDT:', e);
         }
-        return null;
+        return tasas.usdt || null;
     }
 }
 
@@ -347,9 +469,16 @@ async function obtenerTasaEuro() {
             const data = await response.json();
             return data.promedio || data.price || null;
         }
-    } catch (e) {}
+    } catch (e) {
+        console.log('Error obteniendo Euro online:', e);
+    }
     
-    if (tasas.bcv) return tasas.bcv * 1.07;
+    // Si estamos offline o falló la API, usar el BCV guardado para estimar
+    if (tasas.bcv) {
+        console.log('Usando tasa BCV guardada para estimar Euro');
+        return tasas.bcv * 1.07;
+    }
+    
     return null;
 }
 
@@ -362,6 +491,14 @@ async function actualizarTasas() {
     elementos.fechaBCV.textContent = '';
     elementos.tasaEuro.textContent = '...';
     elementos.tasaUSDT.textContent = '...';
+    
+    // Verificar si hay conexión
+    if (!verificarConexion()) {
+        console.log('📴 Sin conexión a internet');
+        elementos.ultimaActualizacion.textContent = '📴 Sin conexión - Mostrando datos guardados';
+        return;
+    }
+    
     elementos.ultimaActualizacion.textContent = 'Actualizando...';
     
     try {
@@ -396,6 +533,9 @@ async function actualizarTasas() {
         }
         
         actualizarTasaPersonalizadaPorDefecto();
+        
+        // GUARDAR EN STORAGE después de obtener nuevas tasas
+        guardarTasasEnStorage();
         
         ultimaActualizacion = new Date();
         elementos.ultimaActualizacion.textContent = `Actualizado: ${ultimaActualizacion.toLocaleTimeString()}`;
@@ -481,7 +621,7 @@ elementos.inputUSD.addEventListener('blur', () => {
         elementos.inputUSD.value = '';
     }
     editandoUSD = false;
-    // NO desactivamos el enfoque visual, se mantiene el último editado
+    actualizarEnfoqueVisual();
 });
 
 // ============================================
@@ -543,7 +683,7 @@ elementos.inputVES.addEventListener('blur', () => {
         elementos.inputVES.value = '';
     }
     editandoVES = false;
-    // NO desactivamos el enfoque visual, se mantiene el último editado
+    actualizarEnfoqueVisual();
 });
 
 // ============================================
@@ -628,16 +768,40 @@ elementos.tasaPersonalizadaInput.addEventListener('blur', () => {
 // INICIO
 // ============================================
 
-// Establecer valores iniciales
-elementos.inputUSD.value = '1,00';
-const tasaInicial = obtenerTasaSeleccionada();
-if (tasaInicial) {
-    elementos.inputVES.value = formatearNumero(convertirUSDaVES(1), 2);
+// Primero, intentar cargar tasas guardadas
+const tasasCargadas = cargarTasasDeStorage();
+
+if (tasasCargadas) {
+    // Mostrar las tasas guardadas inmediatamente
+    mostrarTasasGuardadas();
+    
+    // Establecer valores iniciales para la conversión
+    elementos.inputUSD.value = '1,00';
+    if (tasas.bcv) {
+        elementos.inputVES.value = formatearNumero(convertirUSDaVES(1), 2);
+    } else {
+        elementos.inputVES.value = formatearNumero(40.00, 2); // Valor por defecto
+    }
+} else {
+    // Si no hay tasas guardadas, usar valores por defecto
+    elementos.inputUSD.value = '1,00';
+    elementos.inputVES.value = formatearNumero(40.00, 2);
 }
 
 // Establecer enfoque visual inicial en USD
 ultimoEditado = 'usd';
 actualizarEnfoqueVisual();
 
-actualizarTasas();
-setInterval(actualizarTasas, 300000);
+// Intentar obtener tasas actualizadas (si hay conexión)
+if (verificarConexion()) {
+    actualizarTasas();
+} else {
+    elementos.ultimaActualizacion.textContent = '📴 Sin conexión - Mostrando últimas tasas guardadas';
+}
+
+// Actualizar cada 5 minutos
+setInterval(() => {
+    if (verificarConexion()) {
+        actualizarTasas();
+    }
+}, 300000);
