@@ -48,20 +48,6 @@
                     <div class="card-value" id="tasaUSDT">---</div>
                 </div>
             </div>
-
-            <!-- Custom rate button (visible when not selected) -->
-            <button class="btn-personalizada" id="btnPersonalizada">
-                <span>➕</span> Tasa Personal
-            </button>
-
-            <!-- Custom rate input (visible only when selected) -->
-            <div class="custom-input-container hidden" id="customInputContainer">
-                <div class="custom-input-wrapper">
-                    <span class="custom-input-icon">✎</span>
-                    <input type="text" id="tasaPersonalizadaInput" class="custom-input" placeholder="0.00" value="40.00">
-                    <span class="custom-input-label">Custom</span>
-                </div>
-            </div>
         </div>
 
         <!-- Converter inputs -->
@@ -69,15 +55,25 @@
             <div class="inputs-conversor">
                 <!-- USD input -->
                 <div class="input-group input-usd">
-                    <label>USD ($)</label>
+                    <label>USD (Dollars)</label>
                     <input type="text" id="inputUSD" placeholder="0.00" value="1.00">
                 </div>
 
                 <!-- VED input -->
                 <div class="input-group input-ves">
-                    <label>VED (Bs.)</label>
+                    <label>VED (Bolivars)</label>
                     <input type="text" id="inputVES" placeholder="0.00" value="---">
                 </div>
+            </div>
+
+            <!-- Custom rate button (visible when not selected) -->
+            <button class="btn-personalizada" id="btnPersonalizada">
+                <span>➕</span> Tasa Personalizada
+            </button>
+
+            <!-- Custom rate input (visible only when selected) - Simple version -->
+            <div class="custom-input-container hidden" id="customInputContainer">
+                <input type="text" id="tasaPersonalizadaInput" class="custom-input-simple" placeholder="Custom rate" value="40.00">
             </div>
         </div>
 
