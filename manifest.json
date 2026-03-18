@@ -1,15 +1,22 @@
 {
-  "id": "/usd2ved-pwa/",
+  "id": "./",
+  "scope": "./",
   "name": "Conversor USD2VED",
   "short_name": "USD2VED",
   "description": "Consulta tasas oficiales del BCV, Paralelo y USDT en tiempo real para Venezuela.",
-  "start_url": "index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0f172a",
   "theme_color": "#2563eb",
   "categories": ["finance", "utilities"],
   "icons": [
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "assets/icon-512.png",
       "sizes": "512x512",
@@ -28,14 +35,14 @@
       "name": "Ver Tasa BCV",
       "short_name": "BCV",
       "description": "Ver la tasa oficial del Banco Central",
-      "url": "index.html",
+      "url": "./index.html",
       "icons": [{ "src": "assets/icon-512.png", "sizes": "192x192" }]
     },
     {
       "name": "Calculadora USDT",
       "short_name": "USDT",
       "description": "Calcular a tasa CriptoYa",
-      "url": "index.html",
+      "url": "./index.html",
       "icons": [{ "src": "assets/icon-512.png", "sizes": "192x192" }]
     }
   ],
