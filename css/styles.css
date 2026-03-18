@@ -38,14 +38,13 @@ h1 {
    ============================================ */
 
 .cards-container {
-    margin-bottom: 16px;
+    margin-bottom: 20px;
 }
 
 .cards {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
-    margin-bottom: 12px;
 }
 
 /* Card styles */
@@ -135,123 +134,19 @@ h1 {
 #card-usdt .card-value { color: #d69419; }
 
 /* ============================================
-   CUSTOM RATE BUTTON
-   ============================================ */
-
-.btn-personalizada {
-    width: 100%;
-    padding: 14px;
-    background: white;
-    border: 2px dashed #94a3b8;
-    border-radius: 16px;
-    color: #334155;
-    font-weight: 600;
-    font-size: 15px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: all 0.2s ease;
-    margin: 8px 0 12px 0;
-}
-
-.btn-personalizada:hover {
-    background: #f1f5f9;
-    border-color: #2563eb;
-    color: #2563eb;
-}
-
-.btn-personalizada.hidden {
-    display: none;
-}
-
-/* ============================================
-   CUSTOM INPUT CONTAINER (appears when selected)
-   ============================================ */
-
-.custom-input-container {
-    width: 100%;
-    margin: 8px 0 12px 0;
-    animation: slideDown 0.3s ease;
-}
-
-.custom-input-container.hidden {
-    display: none;
-}
-
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.custom-input-wrapper {
-    display: flex;
-    align-items: center;
-    background: white;
-    border: 2px solid #2563eb;
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
-}
-
-.custom-input-icon {
-    background: #2563eb;
-    color: white;
-    padding: 0 16px;
-    font-size: 18px;
-    height: 54px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-right: 2px solid #2563eb;
-}
-
-.custom-input {
-    flex: 1;
-    padding: 14px 12px;
-    font-size: 18px;
-    border: none;
-    outline: none;
-    text-align: center;
-    font-weight: 700;
-    color: #0f172a;
-    background: white;
-}
-
-.custom-input:focus {
-    background: #f0f9ff;
-}
-
-.custom-input-label {
-    background: #2563eb;
-    color: white;
-    padding: 0 16px;
-    font-size: 14px;
-    font-weight: 600;
-    height: 54px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-left: 2px solid #2563eb;
-    letter-spacing: 0.5px;
-}
-
-/* ============================================
    CONVERTER INPUTS
    ============================================ */
+
+.conversor {
+    background: #f8fafc;
+    border-radius: 16px;
+    padding: 16px;
+}
 
 .inputs-conversor {
     display: flex;
     flex-direction: column;
     gap: 16px;
-    margin-bottom: 20px;
 }
 
 .input-group {
@@ -336,15 +231,91 @@ h1 {
     transform: translateX(5px);
 }
 
-/* Converter container */
-.conversor {
-    background: #f8fafc;
-    border-radius: 16px;
-    padding: 16px;
-}
-
 .input-group input:focus {
     outline: none;
+}
+
+/* ============================================
+   CUSTOM RATE BUTTON - After VED input
+   ============================================ */
+
+.btn-personalizada {
+    width: 100%;
+    padding: 14px;
+    background: white;
+    border: 2px dashed #94a3b8;
+    border-radius: 16px;
+    color: #334155;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    margin-top: 16px;
+}
+
+.btn-personalizada:hover {
+    background: #f1f5f9;
+    border-color: #2563eb;
+    color: #2563eb;
+}
+
+.btn-personalizada.hidden {
+    display: none;
+}
+
+/* ============================================
+   CUSTOM INPUT CONTAINER - Simple version
+   ============================================ */
+
+.custom-input-container {
+    width: 100%;
+    margin-top: 16px;
+    animation: slideDown 0.3s ease;
+}
+
+.custom-input-container.hidden {
+    display: none;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.custom-input-simple {
+    width: 100%;
+    padding: 14px 12px;
+    font-size: 18px;
+    border: 2px solid #2563eb;
+    border-radius: 16px;
+    outline: none;
+    text-align: center;
+    font-weight: 700;
+    color: #0f172a;
+    background: white;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+.custom-input-simple:focus {
+    background: #f0f9ff;
+    border-color: #2563eb;
+}
+
+.custom-input-simple::placeholder {
+    color: #94a3b8;
+    font-weight: 400;
+    font-size: 16px;
 }
 
 /* ============================================
@@ -353,10 +324,10 @@ h1 {
 
 .footer {
     text-align: center;
-    margin-top: 16px;
-    padding-top: 8px;
-    font-size: 9px;
-    color: #94a3b8;
+    margin-top: 20px;
+    padding-top: 12px;
+    font-size: 10px;
+    color: #64748b;
     border-top: 1px solid #e2e8f0;
 }
 
@@ -380,6 +351,19 @@ h1 {
    ============================================ */
 
 @media (max-width: 480px) {
+    .app {
+        padding: 16px;
+    }
+    
+    h1 {
+        font-size: 22px;
+        margin-bottom: 16px;
+    }
+    
+    .cards {
+        gap: 8px;
+    }
+    
     .card {
         padding: 12px 4px;
         min-height: 100px;
@@ -394,7 +378,7 @@ h1 {
     }
     
     .card-date {
-        font-size: 10px;
+        font-size: 9px;
         padding-top: 4px;
         margin-top: 4px;
     }
@@ -406,15 +390,30 @@ h1 {
         top: 4px;
         right: 4px;
     }
+    
+    .input-usd input,
+    .input-ves input {
+        font-size: 16px;
+        padding: 12px;
+    }
+    
+    .custom-input-simple {
+        padding: 12px 10px;
+        font-size: 16px;
+    }
 }
 
 @media (max-width: 360px) {
     .app {
-        padding: 16px;
+        padding: 12px;
+    }
+    
+    h1 {
+        font-size: 20px;
     }
     
     .cards {
-        gap: 8px;
+        gap: 6px;
     }
     
     .card {
@@ -430,26 +429,50 @@ h1 {
         font-size: 9px;
     }
     
-    .custom-input-icon,
-    .custom-input-label {
-        padding: 0 10px;
-        font-size: 14px;
-        height: 48px;
+    .card-date {
+        font-size: 8px;
     }
     
-    .custom-input {
-        padding: 12px 8px;
-        font-size: 16px;
+    .input-usd input,
+    .input-ves input {
+        font-size: 15px;
+        padding: 10px;
     }
     
     .btn-personalizada {
         padding: 12px;
         font-size: 14px;
+        margin-top: 14px;
     }
     
-    .input-usd input,
-    .input-ves input {
-        font-size: 16px;
-        padding: 12px;
+    .custom-input-container {
+        margin-top: 14px;
     }
+    
+    .custom-input-simple {
+        padding: 10px 8px;
+        font-size: 15px;
+    }
+    
+    .footer {
+        margin-top: 16px;
+        padding-top: 10px;
+        font-size: 9px;
+    }
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+.hidden {
+    display: none !important;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.w-100 {
+    width: 100%;
 }
