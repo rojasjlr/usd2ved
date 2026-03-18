@@ -1,8 +1,8 @@
 // ============================================
-// USD2VED - Conversor de Divisas USD a Bs (VEB)
+// USD2VED - Currency Converter USD to VED
 // ============================================
 
-// Configuración de APIs
+// API Configuration
 const CONFIG = {
     apis: {
         bcvPrincipal: 'https://bcv-api.rafnixg.dev/rates/',
@@ -13,424 +13,446 @@ const CONFIG = {
 };
 
 // ============================================
-// ALMACENAMIENTO LOCAL (localStorage)
+// LOCAL STORAGE MANAGEMENT
 // ============================================
 
 const STORAGE_KEYS = {
-    tasas: 'usd2ved_tasas',
-    fechaTasaBCV: 'usd2ved_fechaBCV',
+    rates: 'usd2ved_tasas',
+    bcvDate: 'usd2ved_fechaBCV',
     timestamp: 'usd2ved_timestamp',
-    tasaPersonalizada: 'usd2ved_tasaPersonalizada'
+    customRate: 'usd2ved_tasaPersonalizada'
 };
 
-function guardarTasasEnStorage() {
-    try {
-        const datosAGuardar = {
-            tasas: tasas,
-            fechaTasaBCV: fechaTasaBCV,
-            timestamp: new Date().toISOString(),
-            tasaPersonalizada: tasaPersonalizada
-        };
-        
-        localStorage.setItem(STORAGE_KEYS.tasas, JSON.stringify(datosAGuardar));
-        console.log('💾 Tasas guardadas en localStorage');
-    } catch (e) {
-        console.warn('No se pudo guardar en localStorage:', e);
-    }
-}
-
-function cargarTasasDeStorage() {
-    try {
-        const datosGuardados = localStorage.getItem(STORAGE_KEYS.tasas);
-        
-        if (!datosGuardados) {
-            console.log('ℹ️ No hay tasas guardadas previamente');
-            return false;
-        }
-        
-        const datos = JSON.parse(datosGuardados);
-        
-        // Restaurar las tasas
-        if (datos.tasas) {
-            tasas = datos.tasas;
-        }
-        
-        if (datos.fechaTasaBCV) {
-            fechaTasaBCV = datos.fechaTasaBCV;
-        }
-        
-        if (datos.tasaPersonalizada) {
-            tasaPersonalizada = datos.tasaPersonalizada;
-        }
-        
-        console.log('📦 Tasas cargadas desde localStorage:', new Date(datos.timestamp).toLocaleString());
-        return true;
-        
-    } catch (e) {
-        console.error('Error cargando tasas de localStorage:', e);
-        return false;
-    }
-}
-
-function mostrarTasasGuardadas() {
-    // Mostrar las tasas del storage en la interfaz
-    if (tasas.bcv) {
-        elementos.tasaBCV.textContent = formatearNumero(tasas.bcv, 4);
-        if (fechaTasaBCV) {
-            elementos.fechaBCV.textContent = formatearFecha(fechaTasaBCV);
-        }
-    }
-    
-    if (tasas.euro) {
-        elementos.tasaEuro.textContent = formatearNumero(tasas.euro, 2);
-    } else if (tasas.bcv) {
-        // Si no hay euro pero sí BCV, mostrar estimado
-        elementos.tasaEuro.textContent = `${formatearNumero(tasas.bcv * 1.07, 2)} (est.)`;
-    }
-    
-    if (tasas.usdt) {
-        elementos.tasaUSDT.textContent = formatearNumero(tasas.usdt, 2);
-    } else {
-        elementos.tasaUSDT.textContent = 'No disponible';
-    }
-    
-    // Actualizar tasa personalizada
-    elementos.tasaPersonalizadaInput.value = formatearNumero(tasaPersonalizada, 2);
-    
-    // Mostrar en el footer que son datos guardados
-    const timestamp = localStorage.getItem(STORAGE_KEYS.timestamp);
-    if (timestamp) {
-        const fecha = new Date(timestamp);
-        elementos.ultimaActualizacion.textContent = `📦 Datos guardados: ${fecha.toLocaleString()}`;
-    } else {
-        elementos.ultimaActualizacion.textContent = '📦 Mostrando datos guardados';
-    }
-}
-
-function verificarConexion() {
-    return navigator.onLine;
-}
-
-// Escuchar cambios en la conexión
-window.addEventListener('online', () => {
-    console.log('🌐 Conexión restablecida, actualizando tasas...');
-    elementos.ultimaActualizacion.textContent = 'Conexión restablecida, actualizando...';
-    actualizarTasas();
-});
-
-window.addEventListener('offline', () => {
-    console.log('📴 Sin conexión, mostrando últimas tasas guardadas');
-    elementos.ultimaActualizacion.textContent = '📴 Sin conexión - Mostrando últimas tasas guardadas';
-});
-
-// Estado de la aplicación
-let tasas = {
+// Application state
+let rates = {
     bcv: null,
     euro: null,
     usdt: null
 };
 
-let fechaTasaBCV = null;
-let tasaPersonalizada = 0.00;
-let ultimaActualizacion;
-let editandoPersonalizada = false;
-let editandoUSD = false;
-let editandoVES = false;
-let ultimoEditado = 'usd'; // 'usd' o 'ves' - por defecto USD
+let bcvDate = null;
+let customRate = 40.00;
+let customMode = false;
+let lastEdited = 'usd';
+let editingCustom = false;
+let editingUSD = false;
+let editingVES = false;
 let timeoutId;
 
-// Elementos del DOM
-const elementos = {
+// DOM Elements
+const elements = {
+    // Cards
+    cards: {
+        bcv: document.getElementById('card-bcv'),
+        euro: document.getElementById('card-euro'),
+        usdt: document.getElementById('card-usdt')
+    },
+    
+    // Rate values
     tasaBCV: document.getElementById('tasaBCV'),
     fechaBCV: document.getElementById('fechaBCV'),
     tasaEuro: document.getElementById('tasaEuro'),
     tasaUSDT: document.getElementById('tasaUSDT'),
     
+    // Inputs
     inputUSD: document.getElementById('inputUSD'),
     inputVES: document.getElementById('inputVES'),
-    
     inputUSDGroup: document.querySelector('.input-usd'),
     inputVESGroup: document.querySelector('.input-ves'),
     
-    personalizadaGroup: document.getElementById('personalizadaGroup'),
-    tasaPersonalizadaInput: document.getElementById('tasaPersonalizadaInput'),
+    // Custom elements - Button and hidden input
+    btnCustom: document.getElementById('btnPersonalizada'),
+    customContainer: document.getElementById('customInputContainer'),
+    customInput: document.getElementById('tasaPersonalizadaInput'),
     
-    radios: document.querySelectorAll('input[name="tasa"]'),
-    
-    ultimaActualizacion: document.getElementById('ultimaActualizacion'),
-    
-    cards: {
-        bcv: document.getElementById('card-bcv'),
-        euro: document.getElementById('card-euro'),
-        usdt: document.getElementById('card-usdt')
-    }
+    // Footer
+    lastUpdate: document.getElementById('ultimaActualizacion')
 };
 
 // ============================================
-// FUNCIÓN PARA FORMATEAR NÚMERO
+// UTILITY FUNCTIONS
 // ============================================
-function formatearNumero(valor, decimales = 2) {
-    if (valor === undefined || valor === null || isNaN(valor)) return 'N/A';
-    
-    let valorRedondeado = Number(valor).toFixed(decimales);
-    let partes = valorRedondeado.split('.');
-    let entero = partes[0];
-    let decimal = partes[1];
 
-    entero = entero.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    return entero + ',' + decimal;
+function formatNumber(value, decimals = 2) {
+    if (value === undefined || value === null || isNaN(value)) return 'N/A';
+    
+    let rounded = Number(value).toFixed(decimals);
+    let parts = rounded.split('.');
+    let integer = parts[0];
+    let decimal = parts[1];
+
+    integer = integer.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return integer + ',' + decimal;
 }
 
-// ============================================
-// FUNCIÓN PARA PARSEAR NÚMERO CON FORMATO VENEZOLANO
-// ============================================
-function parsearNumero(valorStr) {
-    if (!valorStr) return NaN;
+function parseNumber(valueStr) {
+    if (!valueStr) return NaN;
     
-    let limpio = valorStr.toString()
+    let clean = valueStr.toString()
         .replace(/\./g, '')
         .replace(',', '.');
     
-    return parseFloat(limpio);
+    return parseFloat(clean);
 }
 
-// ============================================
-// FUNCIÓN PARA LIMITAR A 2 DECIMALES
-// ============================================
-function limitarDosDecimales(valor) {
-    if (isNaN(valor)) return 0;
-    return Math.round(valor * 100) / 100;
+function limitTwoDecimals(value) {
+    if (isNaN(value)) return 0;
+    return Math.round(value * 100) / 100;
 }
 
-// ============================================
-// FUNCIÓN PARA FORMATEAR FECHA
-// ============================================
-function formatearFecha(fechaStr) {
-    if (!fechaStr) return '';
+function formatDate(dateStr) {
+    if (!dateStr) return '';
     
     try {
-        const fecha = new Date(fechaStr);
-        if (isNaN(fecha.getTime())) return '';
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return '';
         
-        const dia = fecha.getDate().toString().padStart(2, '0');
-        const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
-        const año = fecha.getFullYear();
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear();
         
-        return `📅 ${dia}/${mes}/${año}`;
+        return `📅 ${day}/${month}/${year}`;
     } catch (e) {
         return '';
     }
 }
 
+function checkConnection() {
+    return navigator.onLine;
+}
+
 // ============================================
-// FUNCIÓN PARA OBTENER TASA SELECCIONADA
+// STORAGE FUNCTIONS
 // ============================================
-function obtenerTasaSeleccionada() {
-    for (const radio of elementos.radios) {
-        if (radio.checked) {
-            if (radio.value === 'personalizada') {
-                return tasaPersonalizada;
-            } else {
-                return tasas[radio.value];
+
+function saveRatesToStorage() {
+    try {
+        const dataToSave = {
+            rates: rates,
+            bcvDate: bcvDate,
+            timestamp: new Date().toISOString(),
+            customRate: customRate
+        };
+        
+        localStorage.setItem(STORAGE_KEYS.rates, JSON.stringify(dataToSave));
+        console.log('Rates saved to localStorage');
+    } catch (e) {
+        console.warn('Could not save to localStorage:', e);
+    }
+}
+
+function loadRatesFromStorage() {
+    try {
+        const savedData = localStorage.getItem(STORAGE_KEYS.rates);
+        
+        if (!savedData) {
+            console.log('No saved rates found');
+            return false;
+        }
+        
+        const data = JSON.parse(savedData);
+        
+        if (data.rates) {
+            rates = data.rates;
+        }
+        
+        if (data.bcvDate) {
+            bcvDate = data.bcvDate;
+        }
+        
+        if (data.customRate) {
+            customRate = data.customRate;
+            if (elements.customInput) {
+                elements.customInput.value = formatNumber(customRate, 2);
             }
         }
-    }
-    return tasas.bcv; // Default
-}
-
-// ============================================
-// FUNCIONES DE CONVERSIÓN
-// ============================================
-
-function convertirUSDaVES(usd) {
-    const tasa = obtenerTasaSeleccionada();
-    if (!tasa || isNaN(usd)) return NaN;
-    return usd * tasa;
-}
-
-function convertirVESaUSD(ves) {
-    const tasa = obtenerTasaSeleccionada();
-    if (!tasa || isNaN(ves)) return NaN;
-    return ves / tasa;
-}
-
-// ============================================
-// FUNCIONES PARA EFECTOS VISUALES
-// ============================================
-
-function actualizarEnfoqueVisual() {
-    // Limpiar clases de edición
-    elementos.inputUSDGroup.classList.remove('editing');
-    elementos.inputVESGroup.classList.remove('editing');
-    
-    // Aplicar clase según el último editado
-    if (ultimoEditado === 'usd') {
-        elementos.inputUSDGroup.classList.add('editing');
-    } else if (ultimoEditado === 'ves') {
-        elementos.inputVESGroup.classList.add('editing');
+        
+        console.log('Rates loaded from localStorage');
+        return true;
+        
+    } catch (e) {
+        console.error('Error loading rates from localStorage:', e);
+        return false;
     }
 }
 
-// ============================================
-// FUNCIÓN PARA ACTUALIZAR DESDE USD
-// ============================================
-function actualizarDesdeUSD() {
-    if (editandoVES) return; // Evitar loops
+function displaySavedRates() {
+    if (rates.bcv) {
+        elements.tasaBCV.textContent = formatNumber(rates.bcv, 4);
+        if (bcvDate) {
+            elements.fechaBCV.textContent = formatDate(bcvDate);
+        }
+    }
     
-    editandoUSD = true;
-    ultimoEditado = 'usd';
-    actualizarEnfoqueVisual();
+    if (rates.euro) {
+        elements.tasaEuro.textContent = formatNumber(rates.euro, 2);
+    } else if (rates.bcv) {
+        elements.tasaEuro.textContent = `${formatNumber(rates.bcv * 1.07, 2)} (est.)`;
+    }
     
-    const usd = parsearNumero(elementos.inputUSD.value);
+    if (rates.usdt) {
+        elements.tasaUSDT.textContent = formatNumber(rates.usdt, 2);
+    } else {
+        elements.tasaUSDT.textContent = 'Unavailable';
+    }
+    
+    elements.customInput.value = formatNumber(customRate, 2);
+    
+    const timestamp = localStorage.getItem(STORAGE_KEYS.timestamp);
+    if (timestamp) {
+        const date = new Date(timestamp);
+        elements.lastUpdate.textContent = `📦 Saved data: ${date.toLocaleString()}`;
+    } else {
+        elements.lastUpdate.textContent = '📦 Showing saved data';
+    }
+}
+
+// ============================================
+// RATE SELECTION FUNCTIONS
+// ============================================
+
+function getSelectedRate() {
+    if (customMode) {
+        return customRate;
+    } else {
+        if (elements.cards.bcv.classList.contains('active')) {
+            return rates.bcv;
+        } else if (elements.cards.euro.classList.contains('active')) {
+            return rates.euro;
+        } else if (elements.cards.usdt.classList.contains('active')) {
+            return rates.usdt;
+        }
+        return rates.bcv;
+    }
+}
+
+function activateRate(type) {
+    // Deactivate all cards
+    Object.values(elements.cards).forEach(card => {
+        card.classList.remove('active');
+    });
+    
+    // Hide custom input and show button
+    customMode = false;
+    elements.btnCustom.classList.remove('hidden');
+    elements.customContainer.classList.add('hidden');
+    
+    // Activate selected card
+    if (elements.cards[type]) {
+        elements.cards[type].classList.add('active');
+    }
+    
+    // Update conversion
+    if (lastEdited === 'usd') {
+        updateFromUSD();
+    } else {
+        updateFromVES();
+    }
+}
+
+function calculateAverageRate() {
+    const validRates = [];
+    
+    if (rates.bcv && !isNaN(rates.bcv) && rates.bcv > 0) {
+        validRates.push(rates.bcv);
+    }
+    if (rates.euro && !isNaN(rates.euro) && rates.euro > 0) {
+        validRates.push(rates.euro);
+    }
+    if (rates.usdt && !isNaN(rates.usdt) && rates.usdt > 0) {
+        validRates.push(rates.usdt);
+    }
+    
+    if (validRates.length === 0) {
+        return 40.00; // Default fallback
+    }
+    
+    const sum = validRates.reduce((acc, rate) => acc + rate, 0);
+    return sum / validRates.length;
+}
+
+function activateCustomRate() {
+    // Deactivate all cards
+    Object.values(elements.cards).forEach(card => {
+        card.classList.remove('active');
+    });
+    
+    // Calculate average of the 3 rates
+    const average = calculateAverageRate();
+    customRate = limitTwoDecimals(average);
+    
+    // Update custom input with the average value
+    elements.customInput.value = formatNumber(customRate, 2);
+    
+    // Show custom input and hide button
+    customMode = true;
+    elements.btnCustom.classList.add('hidden');
+    elements.customContainer.classList.remove('hidden');
+    
+    // Focus on custom input
+    setTimeout(() => {
+        elements.customInput.focus();
+        elements.customInput.select();
+    }, 100);
+    
+    // Update conversion
+    if (lastEdited === 'usd') {
+        updateFromUSD();
+    } else {
+        updateFromVES();
+    }
+}
+
+// ============================================
+// CONVERSION FUNCTIONS
+// ============================================
+
+function convertUSDtoVES(usd) {
+    const rate = getSelectedRate();
+    if (!rate || isNaN(usd)) return NaN;
+    return usd * rate;
+}
+
+function convertVEStoUSD(ves) {
+    const rate = getSelectedRate();
+    if (!rate || isNaN(ves)) return NaN;
+    return ves / rate;
+}
+
+// ============================================
+// UI UPDATE FUNCTIONS
+// ============================================
+
+function updateVisualFocus() {
+    elements.inputUSDGroup.classList.remove('editing');
+    elements.inputVESGroup.classList.remove('editing');
+    
+    if (lastEdited === 'usd') {
+        elements.inputUSDGroup.classList.add('editing');
+    } else if (lastEdited === 'ves') {
+        elements.inputVESGroup.classList.add('editing');
+    }
+}
+
+function updateFromUSD() {
+    if (editingVES) return;
+    
+    editingUSD = true;
+    lastEdited = 'usd';
+    updateVisualFocus();
+    
+    const usd = parseNumber(elements.inputUSD.value);
     
     if (!isNaN(usd) && usd > 0) {
-        const ves = convertirUSDaVES(usd);
+        const ves = convertUSDtoVES(usd);
         if (!isNaN(ves)) {
-            elementos.inputVES.value = formatearNumero(ves, 2);
+            elements.inputVES.value = formatNumber(ves, 2);
         }
     } else {
-        elementos.inputVES.value = '';
+        elements.inputVES.value = '';
     }
     
-    // Efecto visual en la tarjeta seleccionada (solo si NO es personalizada)
-    const tasaSeleccionada = obtenerRadioSeleccionado();
-    if (tasaSeleccionada !== 'personalizada' && elementos.cards[tasaSeleccionada]) {
-        Object.values(elementos.cards).forEach(card => {
-            if (card) card.style.transform = 'scale(1)';
-        });
-        elementos.cards[tasaSeleccionada].style.transform = 'scale(1.02)';
-        setTimeout(() => {
-            elementos.cards[tasaSeleccionada].style.transform = 'scale(1)';
-        }, 200);
+    // Visual effect on selected card
+    if (!customMode) {
+        const activeCard = Object.values(elements.cards).find(card => card.classList.contains('active'));
+        if (activeCard) {
+            Object.values(elements.cards).forEach(card => {
+                if (card) card.style.transform = 'scale(1)';
+            });
+            activeCard.style.transform = 'scale(1.02)';
+            setTimeout(() => {
+                activeCard.style.transform = 'scale(1)';
+            }, 200);
+        }
     }
     
-    editandoUSD = false;
+    editingUSD = false;
 }
 
-// ============================================
-// FUNCIÓN PARA ACTUALIZAR DESDE VES
-// ============================================
-function actualizarDesdeVES() {
-    if (editandoUSD) return; // Evitar loops
+function updateFromVES() {
+    if (editingUSD) return;
     
-    editandoVES = true;
-    ultimoEditado = 'ves';
-    actualizarEnfoqueVisual();
+    editingVES = true;
+    lastEdited = 'ves';
+    updateVisualFocus();
     
-    const ves = parsearNumero(elementos.inputVES.value);
+    const ves = parseNumber(elements.inputVES.value);
     
     if (!isNaN(ves) && ves > 0) {
-        const usd = convertirVESaUSD(ves);
+        const usd = convertVEStoUSD(ves);
         if (!isNaN(usd)) {
-            elementos.inputUSD.value = formatearNumero(usd, 2);
+            elements.inputUSD.value = formatNumber(usd, 2);
         }
     } else {
-        elementos.inputUSD.value = '';
+        elements.inputUSD.value = '';
     }
     
-    // Efecto visual en la tarjeta seleccionada (solo si NO es personalizada)
-    const tasaSeleccionada = obtenerRadioSeleccionado();
-    if (tasaSeleccionada !== 'personalizada' && elementos.cards[tasaSeleccionada]) {
-        Object.values(elementos.cards).forEach(card => {
-            if (card) card.style.transform = 'scale(1)';
-        });
-        elementos.cards[tasaSeleccionada].style.transform = 'scale(1.02)';
-        setTimeout(() => {
-            elementos.cards[tasaSeleccionada].style.transform = 'scale(1)';
-        }, 200);
-    }
-    
-    editandoVES = false;
-}
-
-// ============================================
-// FUNCIÓN AUXILIAR PARA OBTENER RADIO SELECCIONADO
-// ============================================
-function obtenerRadioSeleccionado() {
-    for (const radio of elementos.radios) {
-        if (radio.checked) {
-            return radio.value;
+    // Visual effect on selected card
+    if (!customMode) {
+        const activeCard = Object.values(elements.cards).find(card => card.classList.contains('active'));
+        if (activeCard) {
+            Object.values(elements.cards).forEach(card => {
+                if (card) card.style.transform = 'scale(1)';
+            });
+            activeCard.style.transform = 'scale(1.02)';
+            setTimeout(() => {
+                activeCard.style.transform = 'scale(1)';
+            }, 200);
         }
     }
-    return 'bcv';
+    
+    editingVES = false;
 }
 
 // ============================================
-// FUNCIÓN PARA CALCULAR PROMEDIO DE TASAS
-// ============================================
-function calcularPromedioTasas() {
-    const tasasValidas = [];
-    
-    if (tasas.bcv && !isNaN(tasas.bcv)) tasasValidas.push(tasas.bcv);
-    if (tasas.euro && !isNaN(tasas.euro)) tasasValidas.push(tasas.euro);
-    if (tasas.usdt && !isNaN(tasas.usdt)) tasasValidas.push(tasas.usdt);
-    
-    if (tasasValidas.length === 0) return 40.00;
-    
-    const suma = tasasValidas.reduce((acc, tasa) => acc + tasa, 0);
-    return suma / tasasValidas.length;
-}
-
-// ============================================
-// FUNCIÓN PARA ACTUALIZAR TASA PERSONALIZADA
-// ============================================
-function actualizarTasaPersonalizadaPorDefecto() {
-    if (!editandoPersonalizada) {
-        const promedio = calcularPromedioTasas();
-        tasaPersonalizada = limitarDosDecimales(promedio);
-        elementos.tasaPersonalizadaInput.value = formatearNumero(tasaPersonalizada, 2);
-    }
-}
-
-// ============================================
-// FUNCIONES DE APIs
+// API FUNCTIONS
 // ============================================
 
-async function obtenerTasaBCV() {
-    if (!verificarConexion()) {
-        console.log('📴 Offline: Devolviendo tasa BCV guardada');
-        return tasas.bcv || null;
+async function fetchBCVRate() {
+    if (!checkConnection()) {
+        console.log('Offline: Returning saved BCV rate');
+        return rates.bcv || null;
     }
     
     try {
         const response = await fetch(CONFIG.apis.bcvPrincipal);
         if (response.ok) {
             const data = await response.json();
-            console.log('✅ Tasa BCV obtenida de API principal:', data.dollar);
+            console.log('BCV rate from main API:', data.dollar);
             
             if (data.date) {
-                fechaTasaBCV = data.date;
+                bcvDate = data.date;
             }
             
             return data.dollar;
         }
     } catch (e) {
-        console.log('⚠️ Error con API principal, usando respaldo:', e);
+        console.log('Error with main API, using backup:', e);
     }
     
     try {
         const response = await fetch(CONFIG.apis.bcvRespaldo);
         if (response.ok) {
             const data = await response.json();
-            console.log('✅ Tasa BCV obtenida de API respaldo:', data.promedio || data.price);
+            console.log('BCV rate from backup API:', data.promedio || data.price);
             
             if (data.fechaActualizacion || data.date) {
-                fechaTasaBCV = data.fechaActualizacion || data.date;
+                bcvDate = data.fechaActualizacion || data.date;
             }
             
             return data.promedio || data.price;
         }
     } catch (e) {
-        console.error('❌ Ambas APIs de BCV fallaron:', e);
+        console.error('Both BCV APIs failed:', e);
     }
     
     return null;
 }
 
-async function obtenerTasaUSDT() {
-    if (!verificarConexion()) {
-        console.log('📴 Offline: No se puede obtener USDT');
-        return tasas.usdt || null; // Devolver la última tasa guardada si existe
+async function fetchUSDTRate() {
+    if (!checkConnection()) {
+        console.log('Offline: Cannot fetch USDT');
+        return rates.usdt || null;
     }
     
     const controller = new AbortController();
@@ -445,7 +467,7 @@ async function obtenerTasaUSDT() {
         const data = await response.json();
         
         if (data.binancep2p && data.binancep2p.bid) {
-            console.log('✅ Usando BID de Binance P2P:', data.binancep2p.bid);
+            console.log('Using Binance P2P BID:', data.binancep2p.bid);
             return data.binancep2p.bid;
         }
         
@@ -454,15 +476,15 @@ async function obtenerTasaUSDT() {
     } catch (e) {
         clearTimeout(timeoutId);
         if (e.name === 'AbortError') {
-            console.error('⏰ Timeout obteniendo USDT');
+            console.error('Timeout fetching USDT');
         } else {
-            console.error('Error obteniendo USDT:', e);
+            console.error('Error fetching USDT:', e);
         }
-        return tasas.usdt || null;
+        return rates.usdt || null;
     }
 }
 
-async function obtenerTasaEuro() {
+async function fetchEuroRate() {
     try {
         const response = await fetch(CONFIG.apis.euro);
         if (response.ok) {
@@ -470,338 +492,388 @@ async function obtenerTasaEuro() {
             return data.promedio || data.price || null;
         }
     } catch (e) {
-        console.log('Error obteniendo Euro online:', e);
+        console.log('Error fetching Euro online:', e);
     }
     
-    // Si estamos offline o falló la API, usar el BCV guardado para estimar
-    if (tasas.bcv) {
-        console.log('Usando tasa BCV guardada para estimar Euro');
-        return tasas.bcv * 1.07;
+    if (rates.bcv) {
+        console.log('Using saved BCV rate to estimate Euro');
+        return rates.bcv * 1.07;
     }
     
     return null;
 }
 
 // ============================================
-// ACTUALIZAR TASAS
+// UPDATE RATES
 // ============================================
 
-async function actualizarTasas() {
-    elementos.tasaBCV.textContent = '...';
-    elementos.fechaBCV.textContent = '';
-    elementos.tasaEuro.textContent = '...';
-    elementos.tasaUSDT.textContent = '...';
+async function updateRates() {
+    elements.tasaBCV.textContent = '...';
+    elements.fechaBCV.textContent = '';
+    elements.tasaEuro.textContent = '...';
+    elements.tasaUSDT.textContent = '...';
     
-    // Verificar si hay conexión
-    if (!verificarConexion()) {
-        console.log('📴 Sin conexión a internet');
-        elementos.ultimaActualizacion.textContent = '📴 Sin conexión - Mostrando datos guardados';
+    if (!checkConnection()) {
+        console.log('No internet connection');
+        elements.lastUpdate.textContent = '📴 Offline - Showing saved data';
         return;
     }
     
-    elementos.ultimaActualizacion.textContent = 'Actualizando...';
+    elements.lastUpdate.textContent = 'Updating...';
     
     try {
-        tasas.bcv = await obtenerTasaBCV();
-        if (tasas.bcv) {
-            elementos.tasaBCV.textContent = formatearNumero(tasas.bcv, 4);
-            if (fechaTasaBCV) {
-                elementos.fechaBCV.textContent = formatearFecha(fechaTasaBCV);
+        rates.bcv = await fetchBCVRate();
+        if (rates.bcv) {
+            elements.tasaBCV.textContent = formatNumber(rates.bcv, 4);
+            if (bcvDate) {
+                elements.fechaBCV.textContent = formatDate(bcvDate);
             }
         } else {
-            elementos.tasaBCV.textContent = 'Error';
-            elementos.fechaBCV.textContent = '';
+            elements.tasaBCV.textContent = 'Error';
+            elements.fechaBCV.textContent = '';
         }
         
-        tasas.euro = await obtenerTasaEuro();
-        if (tasas.euro) {
-            elementos.tasaEuro.textContent = formatearNumero(tasas.euro, 2);
+        rates.euro = await fetchEuroRate();
+        if (rates.euro) {
+            elements.tasaEuro.textContent = formatNumber(rates.euro, 2);
         } else {
-            if (tasas.bcv) {
-                tasas.euro = tasas.bcv * 1.07;
-                elementos.tasaEuro.textContent = `${formatearNumero(tasas.euro, 2)} (est.)`;
+            if (rates.bcv) {
+                rates.euro = rates.bcv * 1.07;
+                elements.tasaEuro.textContent = `${formatNumber(rates.euro, 2)} (est.)`;
             } else {
-                elementos.tasaEuro.textContent = 'N/A';
+                elements.tasaEuro.textContent = 'N/A';
             }
         }
         
-        tasas.usdt = await obtenerTasaUSDT();
-        if (tasas.usdt) {
-            elementos.tasaUSDT.textContent = formatearNumero(tasas.usdt, 2);
+        rates.usdt = await fetchUSDTRate();
+        if (rates.usdt) {
+            elements.tasaUSDT.textContent = formatNumber(rates.usdt, 2);
         } else {
-            elementos.tasaUSDT.textContent = 'No disponible';
+            elements.tasaUSDT.textContent = 'Unavailable';
         }
         
-        actualizarTasaPersonalizadaPorDefecto();
+        // If custom mode is active, update the custom rate with new average
+        if (customMode) {
+            const average = calculateAverageRate();
+            customRate = limitTwoDecimals(average);
+            elements.customInput.value = formatNumber(customRate, 2);
+        }
         
-        // GUARDAR EN STORAGE después de obtener nuevas tasas
-        guardarTasasEnStorage();
+        // Save to storage
+        saveRatesToStorage();
         
-        ultimaActualizacion = new Date();
-        elementos.ultimaActualizacion.textContent = `Actualizado: ${ultimaActualizacion.toLocaleTimeString()}`;
+        const now = new Date();
+        elements.lastUpdate.textContent = `Updated: ${now.toLocaleTimeString()}`;
         
-        // Actualizar conversión basada en el último campo editado
-        if (ultimoEditado === 'usd') {
-            const usd = parsearNumero(elementos.inputUSD.value);
+        // Update conversion based on active rate
+        if (lastEdited === 'usd') {
+            const usd = parseNumber(elements.inputUSD.value);
             if (!isNaN(usd) && usd > 0) {
-                elementos.inputVES.value = formatearNumero(convertirUSDaVES(usd), 2);
+                elements.inputVES.value = formatNumber(convertUSDtoVES(usd), 2);
             }
-        } else if (ultimoEditado === 'ves') {
-            const ves = parsearNumero(elementos.inputVES.value);
+        } else if (lastEdited === 'ves') {
+            const ves = parseNumber(elements.inputVES.value);
             if (!isNaN(ves) && ves > 0) {
-                elementos.inputUSD.value = formatearNumero(convertirVESaUSD(ves), 2);
+                elements.inputUSD.value = formatNumber(convertVEStoUSD(ves), 2);
             }
         }
         
-        // Mantener el enfoque visual
-        actualizarEnfoqueVisual();
+        updateVisualFocus();
         
     } catch (error) {
-        console.error('Error actualizando tasas:', error);
-        elementos.ultimaActualizacion.textContent = 'Error de conexión';
+        console.error('Error updating rates:', error);
+        elements.lastUpdate.textContent = 'Connection error';
     }
 }
 
 // ============================================
-// EVENTOS PARA INPUT USD
+// EVENT LISTENERS - Cards
 // ============================================
 
-elementos.inputUSD.addEventListener('focus', (e) => {
-    editandoUSD = true;
-    ultimoEditado = 'usd';
-    actualizarEnfoqueVisual();
+elements.cards.bcv.addEventListener('click', () => {
+    activateRate('bcv');
+    elements.cards.bcv.style.transform = 'scale(0.98)';
+    setTimeout(() => {
+        elements.cards.bcv.style.transform = '';
+    }, 150);
+});
+
+elements.cards.euro.addEventListener('click', () => {
+    activateRate('euro');
+    elements.cards.euro.style.transform = 'scale(0.98)';
+    setTimeout(() => {
+        elements.cards.euro.style.transform = '';
+    }, 150);
+});
+
+elements.cards.usdt.addEventListener('click', () => {
+    activateRate('usdt');
+    elements.cards.usdt.style.transform = 'scale(0.98)';
+    setTimeout(() => {
+        elements.cards.usdt.style.transform = '';
+    }, 150);
+});
+
+// ============================================
+// EVENT LISTENERS - Custom Button
+// ============================================
+
+elements.btnCustom.addEventListener('click', () => {
+    activateCustomRate();
+});
+
+// ============================================
+// EVENT LISTENERS - Custom Input
+// ============================================
+
+elements.customInput.addEventListener('focus', () => {
+    editingCustom = true;
+    if (!customMode) {
+        activateCustomRate();
+    }
+});
+
+elements.customInput.addEventListener('input', (e) => {
+    let value = e.target.value;
     
-    const valorNumerico = parsearNumero(e.target.value);
-    if (!isNaN(valorNumerico) && valorNumerico > 0) {
-        e.target.value = valorNumerico.toString().replace('.', ',');
+    // Format: only numbers, comma as decimal separator
+    value = value.replace(/\./g, ',');
+    
+    const parts = value.split(',');
+    if (parts.length > 2) {
+        value = parts[0] + ',' + parts.slice(1).join('');
+    }
+    
+    if (parts.length === 2 && parts[1].length > 2) {
+        value = parts[0] + ',' + parts[1].substring(0, 2);
+    }
+    
+    value = value.replace(/[^\d,]/g, '');
+    
+    if (e.target.value !== value) {
+        e.target.value = value;
+    }
+    
+    const numericValue = parseNumber(value);
+    
+    if (!isNaN(numericValue) && numericValue > 0) {
+        customRate = limitTwoDecimals(numericValue);
+        
+        if (lastEdited === 'usd') {
+            updateFromUSD();
+        } else if (lastEdited === 'ves') {
+            updateFromVES();
+        }
+    }
+});
+
+elements.customInput.addEventListener('blur', () => {
+    const numericValue = parseNumber(elements.customInput.value);
+    
+    if (!isNaN(numericValue) && numericValue > 0) {
+        customRate = limitTwoDecimals(numericValue);
+        elements.customInput.value = formatNumber(customRate, 2);
+    } else {
+        elements.customInput.value = formatNumber(customRate, 2);
+    }
+    
+    editingCustom = false;
+});
+
+// Allow Enter key to keep focus
+elements.customInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        elements.customInput.focus();
+    }
+});
+
+// ============================================
+// EVENT LISTENERS - USD Input
+// ============================================
+
+elements.inputUSD.addEventListener('focus', (e) => {
+    editingUSD = true;
+    lastEdited = 'usd';
+    updateVisualFocus();
+    
+    const numericValue = parseNumber(e.target.value);
+    if (!isNaN(numericValue) && numericValue > 0) {
+        e.target.value = numericValue.toString().replace('.', ',');
     } else {
         e.target.value = '';
     }
 });
 
-elementos.inputUSD.addEventListener('input', (e) => {
-    let valor = e.target.value;
+elements.inputUSD.addEventListener('input', (e) => {
+    let value = e.target.value;
     
-    valor = valor.replace(/\./g, ',');
+    value = value.replace(/\./g, ',');
     
-    const partes = valor.split(',');
-    if (partes.length > 2) {
-        valor = partes[0] + ',' + partes.slice(1).join('');
+    const parts = value.split(',');
+    if (parts.length > 2) {
+        value = parts[0] + ',' + parts.slice(1).join('');
     }
     
-    if (partes.length === 2 && partes[1].length > 2) {
-        valor = partes[0] + ',' + partes[1].substring(0, 2);
+    if (parts.length === 2 && parts[1].length > 2) {
+        value = parts[0] + ',' + parts[1].substring(0, 2);
     }
     
-    valor = valor.replace(/[^\d,]/g, '');
+    value = value.replace(/[^\d,]/g, '');
     
-    if (e.target.value !== valor) {
-        e.target.value = valor;
+    if (e.target.value !== value) {
+        e.target.value = value;
     }
     
     clearTimeout(timeoutId);
     
     timeoutId = setTimeout(() => {
-        actualizarDesdeUSD();
+        updateFromUSD();
     }, 300);
 });
 
-elementos.inputUSD.addEventListener('keypress', (e) => {
+elements.inputUSD.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         clearTimeout(timeoutId);
-        actualizarDesdeUSD();
+        updateFromUSD();
     }
 });
 
-elementos.inputUSD.addEventListener('blur', () => {
-    const valor = parsearNumero(elementos.inputUSD.value);
-    if (!isNaN(valor) && valor > 0) {
-        elementos.inputUSD.value = formatearNumero(valor, 2);
+elements.inputUSD.addEventListener('blur', () => {
+    const value = parseNumber(elements.inputUSD.value);
+    if (!isNaN(value) && value > 0) {
+        elements.inputUSD.value = formatNumber(value, 2);
     } else {
-        elementos.inputUSD.value = '';
+        elements.inputUSD.value = '';
     }
-    editandoUSD = false;
-    actualizarEnfoqueVisual();
+    editingUSD = false;
+    updateVisualFocus();
 });
 
 // ============================================
-// EVENTOS PARA INPUT VES
+// EVENT LISTENERS - VES Input
 // ============================================
 
-elementos.inputVES.addEventListener('focus', (e) => {
-    editandoVES = true;
-    ultimoEditado = 'ves';
-    actualizarEnfoqueVisual();
+elements.inputVES.addEventListener('focus', (e) => {
+    editingVES = true;
+    lastEdited = 'ves';
+    updateVisualFocus();
     
-    const valorNumerico = parsearNumero(e.target.value);
-    if (!isNaN(valorNumerico) && valorNumerico > 0) {
-        e.target.value = valorNumerico.toString().replace('.', ',');
+    const numericValue = parseNumber(e.target.value);
+    if (!isNaN(numericValue) && numericValue > 0) {
+        e.target.value = numericValue.toString().replace('.', ',');
     } else {
         e.target.value = '';
     }
 });
 
-elementos.inputVES.addEventListener('input', (e) => {
-    let valor = e.target.value;
+elements.inputVES.addEventListener('input', (e) => {
+    let value = e.target.value;
     
-    valor = valor.replace(/\./g, ',');
+    value = value.replace(/\./g, ',');
     
-    const partes = valor.split(',');
-    if (partes.length > 2) {
-        valor = partes[0] + ',' + partes.slice(1).join('');
+    const parts = value.split(',');
+    if (parts.length > 2) {
+        value = parts[0] + ',' + parts.slice(1).join('');
     }
     
-    if (partes.length === 2 && partes[1].length > 2) {
-        valor = partes[0] + ',' + partes[1].substring(0, 2);
+    if (parts.length === 2 && parts[1].length > 2) {
+        value = parts[0] + ',' + parts[1].substring(0, 2);
     }
     
-    valor = valor.replace(/[^\d,]/g, '');
+    value = value.replace(/[^\d,]/g, '');
     
-    if (e.target.value !== valor) {
-        e.target.value = valor;
+    if (e.target.value !== value) {
+        e.target.value = value;
     }
     
     clearTimeout(timeoutId);
     
     timeoutId = setTimeout(() => {
-        actualizarDesdeVES();
+        updateFromVES();
     }, 300);
 });
 
-elementos.inputVES.addEventListener('keypress', (e) => {
+elements.inputVES.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         clearTimeout(timeoutId);
-        actualizarDesdeVES();
+        updateFromVES();
     }
 });
 
-elementos.inputVES.addEventListener('blur', () => {
-    const valor = parsearNumero(elementos.inputVES.value);
-    if (!isNaN(valor) && valor > 0) {
-        elementos.inputVES.value = formatearNumero(valor, 2);
+elements.inputVES.addEventListener('blur', () => {
+    const value = parseNumber(elements.inputVES.value);
+    if (!isNaN(value) && value > 0) {
+        elements.inputVES.value = formatNumber(value, 2);
     } else {
-        elementos.inputVES.value = '';
+        elements.inputVES.value = '';
     }
-    editandoVES = false;
-    actualizarEnfoqueVisual();
+    editingVES = false;
+    updateVisualFocus();
 });
 
 // ============================================
-// EVENTOS PARA RADIO BUTTONS
+// CONNECTION EVENT LISTENERS
 // ============================================
 
-elementos.radios.forEach(radio => {
-    radio.addEventListener('change', (e) => {
-        elementos.personalizadaGroup.style.display = 
-            e.target.value === 'personalizada' ? 'block' : 'none';
-        
-        // Al cambiar la tasa, actualizar según el último campo editado
-        if (ultimoEditado === 'usd') {
-            actualizarDesdeUSD();
-        } else if (ultimoEditado === 'ves') {
-            actualizarDesdeVES();
-        }
-    });
+window.addEventListener('online', () => {
+    console.log('Connection restored, updating rates...');
+    elements.lastUpdate.textContent = 'Connection restored, updating...';
+    updateRates();
+});
+
+window.addEventListener('offline', () => {
+    console.log('Offline, showing last saved rates');
+    elements.lastUpdate.textContent = '📴 Offline - Showing last saved rates';
 });
 
 // ============================================
-// EVENTOS PARA TASA PERSONALIZADA
+// INITIALIZATION
 // ============================================
 
-elementos.tasaPersonalizadaInput.addEventListener('focus', () => {
-    editandoPersonalizada = true;
-    if (tasaPersonalizada && tasaPersonalizada > 0) {
-        elementos.tasaPersonalizadaInput.value = tasaPersonalizada.toString().replace('.', ',');
+// Load saved rates
+const ratesLoaded = loadRatesFromStorage();
+
+if (ratesLoaded) {
+    displaySavedRates();
+    
+    // Activate BCV by default
+    activateRate('bcv');
+    
+    // Set initial values
+    elements.inputUSD.value = '1,00';
+    if (rates.bcv) {
+        elements.inputVES.value = formatNumber(convertUSDtoVES(1), 2);
     } else {
-        elementos.tasaPersonalizadaInput.value = '';
-    }
-});
-
-elementos.tasaPersonalizadaInput.addEventListener('input', (e) => {
-    let valor = e.target.value;
-    
-    valor = valor.replace(/\./g, ',');
-    
-    const partes = valor.split(',');
-    if (partes.length > 2) {
-        valor = partes[0] + ',' + partes.slice(1).join('');
-    }
-    
-    if (partes.length === 2 && partes[1].length > 2) {
-        valor = partes[0] + ',' + partes[1].substring(0, 2);
-    }
-    
-    valor = valor.replace(/[^\d,]/g, '');
-    
-    e.target.value = valor;
-    
-    const valorNumerico = parsearNumero(valor);
-    
-    if (!isNaN(valorNumerico) && valorNumerico > 0) {
-        tasaPersonalizada = limitarDosDecimales(valorNumerico);
-        
-        // Si la tasa personalizada está seleccionada, actualizar según último editado
-        if (obtenerRadioSeleccionado() === 'personalizada') {
-            if (ultimoEditado === 'usd') {
-                actualizarDesdeUSD();
-            } else if (ultimoEditado === 'ves') {
-                actualizarDesdeVES();
-            }
-        }
-    }
-});
-
-elementos.tasaPersonalizadaInput.addEventListener('blur', () => {
-    const valorNumerico = parsearNumero(elementos.tasaPersonalizadaInput.value);
-    
-    if (!isNaN(valorNumerico) && valorNumerico > 0) {
-        tasaPersonalizada = limitarDosDecimales(valorNumerico);
-        elementos.tasaPersonalizadaInput.value = formatearNumero(tasaPersonalizada, 2);
-    } else {
-        elementos.tasaPersonalizadaInput.value = '';
-    }
-    
-    editandoPersonalizada = false;
-});
-
-// ============================================
-// INICIO
-// ============================================
-
-// Primero, intentar cargar tasas guardadas
-const tasasCargadas = cargarTasasDeStorage();
-
-if (tasasCargadas) {
-    // Mostrar las tasas guardadas inmediatamente
-    mostrarTasasGuardadas();
-    
-    // Establecer valores iniciales para la conversión
-    elementos.inputUSD.value = '1,00';
-    if (tasas.bcv) {
-        elementos.inputVES.value = formatearNumero(convertirUSDaVES(1), 2);
-    } else {
-        elementos.inputVES.value = formatearNumero(40.00, 2); // Valor por defecto
+        elements.inputVES.value = formatNumber(40.00, 2);
     }
 } else {
-    // Si no hay tasas guardadas, usar valores por defecto
-    elementos.inputUSD.value = '1,00';
-    elementos.inputVES.value = formatearNumero(40.00, 2);
+    activateRate('bcv');
+    elements.inputUSD.value = '1,00';
+    elements.inputVES.value = formatNumber(40.00, 2);
 }
 
-// Establecer enfoque visual inicial en USD
-ultimoEditado = 'usd';
-actualizarEnfoqueVisual();
+// Set initial custom input value
+elements.customInput.value = formatNumber(customRate, 2);
 
-// Intentar obtener tasas actualizadas (si hay conexión)
-if (verificarConexion()) {
-    actualizarTasas();
+// Ensure custom input is hidden initially
+elements.customContainer.classList.add('hidden');
+elements.btnCustom.classList.remove('hidden');
+
+// Set initial visual focus
+lastEdited = 'usd';
+updateVisualFocus();
+
+// Fetch rates if online
+if (checkConnection()) {
+    updateRates();
 } else {
-    elementos.ultimaActualizacion.textContent = '📴 Sin conexión - Mostrando últimas tasas guardadas';
+    elements.lastUpdate.textContent = '📴 Offline - Showing last saved rates';
 }
 
-// Actualizar cada 5 minutos
+// Auto-update every 5 minutes
 setInterval(() => {
-    if (verificarConexion()) {
-        actualizarTasas();
+    if (checkConnection()) {
+        updateRates();
     }
 }, 300000);
