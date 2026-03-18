@@ -1,17 +1,51 @@
 {
-  "name": "Conversor USD VES",
-  "short_name": "USD2VES",
-  "description": "Conversor de divisas con tasas actualizadas de Venezuela",
+  "id": "/usd2ved-pwa/",
+  "name": "Conversor USD2VED",
+  "short_name": "USD2VED",
+  "description": "Consulta tasas oficiales del BCV, Paralelo y USDT en tiempo real para Venezuela.",
   "start_url": "index.html",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0f172a",
   "theme_color": "#2563eb",
+  "categories": ["finance", "utilities"],
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2150/2150150.png",
+      "src": "assets/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Ver Tasa BCV",
+      "short_name": "BCV",
+      "description": "Ver la tasa oficial del Banco Central",
+      "url": "index.html",
+      "icons": [{ "src": "assets/icon-512.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Calculadora USDT",
+      "short_name": "USDT",
+      "description": "Calcular a tasa CriptoYa",
+      "url": "index.html",
+      "icons": [{ "src": "assets/icon-512.png", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "assets/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "form_factor": "narrow",
+      "label": "Pantalla principal de USD2VED"
     }
   ]
 }

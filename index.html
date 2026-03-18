@@ -3,20 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>USD ↔ VED</title>
+    <title>USD ↔ VED | Conversor</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2563eb">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2150/2150150.png">
+    <link rel="apple-touch-icon" href="assets/icon-512.png">
 
     <link rel="stylesheet" href="css/styles.css">
 
     <script>
+      // Registro del Service Worker
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('Service Worker registrado', reg))
-            .catch(err => console.error('Error al registrar SW', err));
+            .then(reg => console.log('✅ SW registrado con éxito'))
+            .catch(err => console.error('❌ Error al registrar SW:', err));
         });
       }
     </script>
@@ -44,7 +45,6 @@
         </div>
 
         <div class="conversor">
-            <!-- INPUTS DIRECTOS (AMBOS EDITABLES) -->
             <div class="inputs-conversor">
                 <div class="input-group input-usd">
                     <label>USD (Dólares)</label>
@@ -66,23 +66,23 @@
                 <p>Usar tasa:</p>
                 <div class="opciones">
                     <label class="opcion">
-                        <input type="radio" name="tasa" value="bcv" checked> BCV USD
+                        <input type="radio" name="tasa" value="bcv" checked> BCV
                     </label>
                     <label class="opcion">
-                        <input type="radio" name="tasa" value="euro"> Euro BCV
+                        <input type="radio" name="tasa" value="euro"> Euro
                     </label>
                     <label class="opcion">
                         <input type="radio" name="tasa" value="usdt"> USDT
                     </label>
                     <label class="opcion">
-                        <input type="radio" name="tasa" value="personalizada"> Personalizada
+                        <input type="radio" name="tasa" value="personalizada"> Personal
                     </label>
                 </div>
             </div>
         </div>
 
         <div class="footer">
-            <p id="ultimaActualizacion">Cargando...</p>
+            <p id="ultimaActualizacion">Sincronizando...</p>
         </div>
     </div>
 
