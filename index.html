@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>USD ↔ VED | Conversor</title>
+    <title>USD ↔ VED | Converter</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2563eb">
@@ -12,12 +12,12 @@
     <link rel="stylesheet" href="css/styles.css">
 
     <script>
-      // Registro del Service Worker
+      // Register service worker
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('✅ SW registrado con éxito'))
-            .catch(err => console.error('❌ Error al registrar SW:', err));
+            .then(reg => console.log('SW registered'))
+            .catch(err => console.log('SW registration failed'));
         });
       }
     </script>
@@ -26,63 +26,64 @@
     <div class="app">
         <h1>🇻🇪 USD ↔ VED</h1>
         
-        <div class="cards">
-            <div class="card" id="card-bcv">
-                <div class="card-title">BCV USD</div>
-                <div class="card-value" id="tasaBCV">---</div>
-                <div class="card-date" id="fechaBCV"></div>
+        <!-- Rate cards container -->
+        <div class="cards-container">
+            <div class="cards" id="tasasCards">
+                <!-- BCV card -->
+                <div class="card card-selectable active" data-rate="bcv" id="card-bcv">
+                    <div class="card-title">USD BCV</div>
+                    <div class="card-value" id="tasaBCV">---</div>
+                    <div class="card-date" id="fechaBCV"></div>
+                </div>
+                
+                <!-- Euro card -->
+                <div class="card card-selectable" data-rate="euro" id="card-euro">
+                    <div class="card-title">EURO BCV</div>
+                    <div class="card-value" id="tasaEuro">---</div>
+                </div>
+                
+                <!-- USDT card -->
+                <div class="card card-selectable" data-rate="usdt" id="card-usdt">
+                    <div class="card-title">USDT</div>
+                    <div class="card-value" id="tasaUSDT">---</div>
+                </div>
             </div>
-            
-            <div class="card" id="card-euro">
-                <div class="card-title">EURO BCV</div>
-                <div class="card-value" id="tasaEuro">---</div>
-            </div>
-            
-            <div class="card" id="card-usdt">
-                <div class="card-title">USDT</div>
-                <div class="card-value" id="tasaUSDT">---</div>
+
+            <!-- Custom rate button (visible when not selected) -->
+            <button class="btn-personalizada" id="btnPersonalizada">
+                <span>➕</span> Tasa Personal
+            </button>
+
+            <!-- Custom rate input (visible only when selected) -->
+            <div class="custom-input-container hidden" id="customInputContainer">
+                <div class="custom-input-wrapper">
+                    <span class="custom-input-icon">✎</span>
+                    <input type="text" id="tasaPersonalizadaInput" class="custom-input" placeholder="0.00" value="40.00">
+                    <span class="custom-input-label">Custom</span>
+                </div>
             </div>
         </div>
 
+        <!-- Converter inputs -->
         <div class="conversor">
             <div class="inputs-conversor">
+                <!-- USD input -->
                 <div class="input-group input-usd">
-                    <label>USD (Dólares)</label>
-                    <input type="text" id="inputUSD" placeholder="0,00" value="1,00">
+                    <label>USD ($)</label>
+                    <input type="text" id="inputUSD" placeholder="0.00" value="1.00">
                 </div>
 
+                <!-- VED input -->
                 <div class="input-group input-ves">
-                    <label>VED (Bolívares)</label>
-                    <input type="text" id="inputVES" placeholder="0,00" value="---">
-                </div>
-            </div>
-
-            <div class="personalizada-group" id="personalizadaGroup" style="display: none;">
-                <label>Ingresa tu tasa personalizada:</label>
-                <input type="text" id="tasaPersonalizadaInput" placeholder="0,00" value="40,00">
-            </div>
-
-            <div class="tasa-selector">
-                <p>Usar tasa:</p>
-                <div class="opciones">
-                    <label class="opcion">
-                        <input type="radio" name="tasa" value="bcv" checked> BCV
-                    </label>
-                    <label class="opcion">
-                        <input type="radio" name="tasa" value="euro"> Euro
-                    </label>
-                    <label class="opcion">
-                        <input type="radio" name="tasa" value="usdt"> USDT
-                    </label>
-                    <label class="opcion">
-                        <input type="radio" name="tasa" value="personalizada"> Personal
-                    </label>
+                    <label>VED (Bs.)</label>
+                    <input type="text" id="inputVES" placeholder="0.00" value="---">
                 </div>
             </div>
         </div>
 
+        <!-- Footer -->
         <div class="footer">
-            <p id="ultimaActualizacion">Sincronizando...</p>
+            <p id="ultimaActualizacion">Syncing...</p>
         </div>
     </div>
 
