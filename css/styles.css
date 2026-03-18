@@ -1,4 +1,4 @@
-/* --- RESET Y ESTILOS GLOBALES --- */
+/* --- RESET AND GLOBAL STYLES --- */
 * {
     margin: 0;
     padding: 0;
@@ -15,7 +15,7 @@ body {
     padding: 16px;
 }
 
-/* Contenedor principal de la App */
+/* Main app container */
 .app {
     max-width: 480px;
     width: 100%;
@@ -33,12 +33,57 @@ h1 {
     font-size: 24px;
 }
 
-/* --- GRID DE TARJETAS DE TASAS --- */
+/* ============================================
+   CARDS - 3 cards grid
+   ============================================ */
+
+.cards-container {
+    margin-bottom: 16px;
+}
+
 .cards {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
+}
+
+/* Card styles */
+.card-selectable {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+    position: relative;
+}
+
+.card-selectable:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.card-selectable.active {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3);
+    transform: scale(1.02);
+}
+
+/* Active indicator checkmark */
+.card-selectable.active::after {
+    content: '✓';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    color: #2563eb;
+    font-weight: bold;
+    background: white;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .card {
@@ -48,7 +93,6 @@ h1 {
     text-align: center;
     border: 1px solid #e2e8f0;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    transition: transform 0.2s ease;
     display: flex;
     flex-direction: column;
     min-height: 110px;
@@ -71,7 +115,7 @@ h1 {
     margin: 4px 0;
 }
 
-/* ESTILO DE FECHA */
+/* Date style */
 .card-date {
     font-size: 11px;
     color: #475569;
@@ -85,18 +129,124 @@ h1 {
     width: 100%;
 }
 
-/* Colores representativos para cada tasa */
+/* Rate-specific colors */
 #card-bcv .card-value { color: #16a34a; }
 #card-euro .card-value { color: #0f172a; }
 #card-usdt .card-value { color: #d69419; }
 
-/* Efecto hover en tarjetas */
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+/* ============================================
+   CUSTOM RATE BUTTON
+   ============================================ */
+
+.btn-personalizada {
+    width: 100%;
+    padding: 14px;
+    background: white;
+    border: 2px dashed #94a3b8;
+    border-radius: 16px;
+    color: #334155;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    margin: 8px 0 12px 0;
 }
 
-/* --- INPUTS DE CONVERSIÓN DIRECTA --- */
+.btn-personalizada:hover {
+    background: #f1f5f9;
+    border-color: #2563eb;
+    color: #2563eb;
+}
+
+.btn-personalizada.hidden {
+    display: none;
+}
+
+/* ============================================
+   CUSTOM INPUT CONTAINER (appears when selected)
+   ============================================ */
+
+.custom-input-container {
+    width: 100%;
+    margin: 8px 0 12px 0;
+    animation: slideDown 0.3s ease;
+}
+
+.custom-input-container.hidden {
+    display: none;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.custom-input-wrapper {
+    display: flex;
+    align-items: center;
+    background: white;
+    border: 2px solid #2563eb;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+.custom-input-icon {
+    background: #2563eb;
+    color: white;
+    padding: 0 16px;
+    font-size: 18px;
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 2px solid #2563eb;
+}
+
+.custom-input {
+    flex: 1;
+    padding: 14px 12px;
+    font-size: 18px;
+    border: none;
+    outline: none;
+    text-align: center;
+    font-weight: 700;
+    color: #0f172a;
+    background: white;
+}
+
+.custom-input:focus {
+    background: #f0f9ff;
+}
+
+.custom-input-label {
+    background: #2563eb;
+    color: white;
+    padding: 0 16px;
+    font-size: 14px;
+    font-weight: 600;
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-left: 2px solid #2563eb;
+    letter-spacing: 0.5px;
+}
+
+/* ============================================
+   CONVERTER INPUTS
+   ============================================ */
+
 .inputs-conversor {
     display: flex;
     flex-direction: column;
@@ -104,7 +254,6 @@ h1 {
     margin-bottom: 20px;
 }
 
-/* Estilo base para inputs */
 .input-group {
     transition: all 0.3s ease;
 }
@@ -129,7 +278,7 @@ h1 {
     font-weight: 700;
 }
 
-/* --- ESTILOS PARA USD (VERDE DE LA TARJETA BCV) --- */
+/* USD input styles - Green theme */
 .input-usd input {
     background-color: #16a34a;
     border: 2px solid #16a34a;
@@ -141,16 +290,15 @@ h1 {
     font-weight: 700;
 }
 
-/* Efecto cuando USD está siendo editado - VERDE CLARO */
 .input-usd.editing {
     transform: scale(1.02);
 }
 
 .input-usd.editing input {
     border-color: #16a34a;
-    box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.3);  /* Sombra verde claro */
-    background-color: #86efac;  /* Verde claro */
-    color: #14532d;  /* Texto verde oscuro para contraste */
+    box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.3);
+    background-color: #86efac;
+    color: #14532d;
 }
 
 .input-usd.editing label {
@@ -159,7 +307,7 @@ h1 {
     transform: translateX(5px);
 }
 
-/* --- ESTILOS PARA VES (AZUL OSCURO) --- */
+/* VED input styles - Blue theme */
 .input-ves input {
     background-color: #1e3a8a;
     border: 2px solid #2563eb;
@@ -171,16 +319,15 @@ h1 {
     font-weight: 700;
 }
 
-/* Efecto cuando VES está siendo editado - AZUL CLARO */
 .input-ves.editing {
     transform: scale(1.02);
 }
 
 .input-ves.editing input {
     border-color: #2563eb;
-    box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.3);  /* Sombra azul claro */
-    background-color: #93c5fd;  /* Azul claro */
-    color: #1e3a8a;  /* Texto azul oscuro para contraste */
+    box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.3);
+    background-color: #93c5fd;
+    color: #1e3a8a;
 }
 
 .input-ves.editing label {
@@ -189,7 +336,7 @@ h1 {
     transform: translateX(5px);
 }
 
-/* --- INPUTS Y FORMULARIO (estilos base) --- */
+/* Converter container */
 .conversor {
     background: #f8fafc;
     border-radius: 16px;
@@ -200,79 +347,10 @@ h1 {
     outline: none;
 }
 
-/* Selector de radio buttons */
-.tasa-selector {
-    margin-top: 16px;
-    font-size: 12px;
-}
+/* ============================================
+   FOOTER
+   ============================================ */
 
-.tasa-selector p {
-    font-weight: 600;
-    color: #334155;
-    margin-bottom: 8px;
-}
-
-.opciones {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-    margin-top: 6px;
-}
-
-.opcion {
-    background: white;
-    padding: 8px 6px;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-size: 11px;
-}
-
-.opcion:hover {
-    background: #f1f5f9;
-    border-color: #94a3b8;
-}
-
-.opcion input[type="radio"] {
-    cursor: pointer;
-    accent-color: #2563eb;
-}
-
-/* --- TASA PERSONALIZADA --- */
-.personalizada-group {
-    margin-top: 16px;
-    padding-top: 12px;
-    border-top: 1px dashed #cbd5e1;
-}
-
-.personalizada-group label {
-    font-size: 12px;
-    margin-bottom: 6px;
-    display: block;
-    color: #475569;
-    font-weight: 500;
-}
-
-.personalizada-group input {
-    width: 100%;
-    padding: 10px;
-    font-size: 15px;
-    border: 2px solid #e2e8f0;
-    border-radius: 12px;
-    text-align: center;
-    transition: border-color 0.2s;
-}
-
-.personalizada-group input:focus {
-    outline: none;
-    border-color: #2563eb;
-}
-
-/* --- FOOTER --- */
 .footer {
     text-align: center;
     margin-top: 16px;
@@ -282,7 +360,10 @@ h1 {
     border-top: 1px solid #e2e8f0;
 }
 
-/* --- ESTADOS DE CARGA --- */
+/* ============================================
+   LOADING STATES
+   ============================================ */
+
 .card.loading {
     opacity: 0.6;
     animation: pulse 1.5s infinite;
@@ -294,12 +375,11 @@ h1 {
     100% { opacity: 0.6; }
 }
 
-/* --- RESPONSIVE --- */
-@media (max-width: 360px) {
-    .app {
-        padding: 16px;
-    }
-    
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
+@media (max-width: 480px) {
     .card {
         padding: 12px 4px;
         min-height: 100px;
@@ -319,13 +399,57 @@ h1 {
         margin-top: 4px;
     }
     
-    .input-usd input,
-    .input-ves input {
-        font-size: 18px !important;
-        padding: 12px;
+    .card-selectable.active::after {
+        width: 16px;
+        height: 16px;
+        font-size: 10px;
+        top: 4px;
+        right: 4px;
+    }
+}
+
+@media (max-width: 360px) {
+    .app {
+        padding: 16px;
     }
     
-    .opciones {
-        grid-template-columns: 1fr;
+    .cards {
+        gap: 8px;
+    }
+    
+    .card {
+        padding: 10px 2px;
+        min-height: 90px;
+    }
+    
+    .card-value {
+        font-size: 14px;
+    }
+    
+    .card-title {
+        font-size: 9px;
+    }
+    
+    .custom-input-icon,
+    .custom-input-label {
+        padding: 0 10px;
+        font-size: 14px;
+        height: 48px;
+    }
+    
+    .custom-input {
+        padding: 12px 8px;
+        font-size: 16px;
+    }
+    
+    .btn-personalizada {
+        padding: 12px;
+        font-size: 14px;
+    }
+    
+    .input-usd input,
+    .input-ves input {
+        font-size: 16px;
+        padding: 12px;
     }
 }
