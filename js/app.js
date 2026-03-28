@@ -508,10 +508,14 @@ async function fetchEuroRate() {
 // ============================================
 
 async function updateRates() {
-    elements.tasaBCV.textContent = '...';
-    elements.fechaBCV.textContent = '';
-    elements.tasaEuro.textContent = '...';
-    elements.tasaUSDT.textContent = '...';
+    const hasSavedRates = rates.bcv || rates.euro || rates.usdt;
+    
+    if (!hasSavedRates) {
+        elements.tasaBCV.textContent = '...';
+        elements.fechaBCV.textContent = '';
+        elements.tasaEuro.textContent = '...';
+        elements.tasaUSDT.textContent = '...';
+    }
     
     if (!checkConnection()) {
         console.log('No internet connection');
