@@ -5,7 +5,7 @@
 // API Configuration
 const CONFIG = {
     apis: {
-        bcvPrincipal: 'https://bcv-api.rafnixg.dev/rates/',
+        bcvPrincipal: 'https://api.allorigins.win/raw?url=https://bcv-api.rafnixg.dev/rates/',
         bcvRespaldo: 'https://ve.dolarapi.com/v1/dolares/oficial',
         euro: 'https://ve.dolarapi.com/v1/euros/oficial',
         usdt: 'https://criptoya.com/api/usdt/ves/1'
@@ -416,15 +416,18 @@ async function fetchBCVRate() {
     
     try {
         const response = await fetch(CONFIG.apis.bcvPrincipal);
+        console.log('Main API status:', response.status, response.ok);
+        
         if (response.ok) {
             const data = await response.json();
-            console.log('BCV rate from main API:', data.dollar);
-            
-            if (data.date) {
-                bcvDate = data.date;
+            console.log('Main API data:', data);
+            if (data && data.dollar) {
+                console.log('BCV rate from main API:', data.dollar);
+                if (data.date) {
+                    bcvDate = data.date;
+                }
+                return data.dollar;
             }
-            
-            return data.dollar;
         }
     } catch (e) {
         console.log('Error with main API, using backup:', e);
