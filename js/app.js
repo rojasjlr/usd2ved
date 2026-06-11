@@ -5,8 +5,7 @@
 // API Configuration
 const CONFIG = {
     apis: {
-        bcvPrincipal: 'https://api.allorigins.win/raw?url=https://bcv-api.rafnixg.dev/rates/',
-        bcvRespaldo: 'https://ve.dolarapi.com/v1/dolares/oficial',
+        bcv: 'https://ve.dolarapi.com/v1/dolares/oficial',
         euro: 'https://ve.dolarapi.com/v1/euros/oficial',
         usdt: 'https://criptoya.com/api/usdt/ves/1'
     }
@@ -415,29 +414,10 @@ async function fetchBCVRate() {
     }
     
     try {
-        const response = await fetch(CONFIG.apis.bcvPrincipal);
-        console.log('Main API status:', response.status, response.ok);
-        
+        const response = await fetch(CONFIG.apis.bcv);
         if (response.ok) {
             const data = await response.json();
-            console.log('Main API data:', data);
-            if (data && data.dollar) {
-                console.log('BCV rate from main API:', data.dollar);
-                if (data.date) {
-                    bcvDate = data.date;
-                }
-                return data.dollar;
-            }
-        }
-    } catch (e) {
-        console.log('Error with main API, using backup:', e);
-    }
-    
-    try {
-        const response = await fetch(CONFIG.apis.bcvRespaldo);
-        if (response.ok) {
-            const data = await response.json();
-            console.log('BCV rate from backup API:', data.promedio || data.price);
+            console.log('BCV rate:', data.promedio || data.price);
             
             if (data.fechaActualizacion || data.date) {
                 bcvDate = data.fechaActualizacion || data.date;
@@ -446,7 +426,7 @@ async function fetchBCVRate() {
             return data.promedio || data.price;
         }
     } catch (e) {
-        console.error('Both BCV APIs failed:', e);
+        console.error('BCV API failed:', e);
     }
     
     return null;
